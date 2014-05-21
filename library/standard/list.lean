@@ -2,9 +2,11 @@
 --
 -- list.lean
 --
--- Experimenting with lists.
+-- Copyright (c) 2014 Carnegie Mellon University. All rights reserved.
+-- Released under Apache 2.0 license as described in the file LICENSE.
+-- Author: Jeremy Avigad, Parikshit Khanna
 --
--- authors: Jeremy Avigad, Parikshit Khanna
+-- A library for lists.
 --
 ----------------------------------------------------------------------------------------------------
 
