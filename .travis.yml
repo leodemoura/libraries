@@ -1,0 +1,24 @@
+language: cpp
+cache: apt
+env:
+  global:
+    # BB_TOKEN=xxxx - encrypt "bitbucket key" with travis-ci key
+    - secure: "TB8fB0nt7PorUYqb36jdXb68TkkOu3uuGqSfvc/DGPff7FgaW6yWdkHkJiPlUzyC/rtL5n8u/SMbAco37NI9rGz0nMYdyyXPlaiN/g7EhT2ovITkR8v90eF0/LA4AOxdyc8pkOpNa65DF2BGNxifKEwSkRGT9dAcbASztkRIwC8="
+    # REPO=BLESSED - encrypt "BLESSED" with private key (travis-ci)
+    - secure: "MWX9ZW/BSW9/YHJvn2wI/JFMdYT3iUlxpLeO6qDPIDoXbyxW5aOsUEzghknl/t0EsV7fepSxVhfXHx4kzOfvlPzlW5kJbT+mxIS9eRzkH7+C4sen1/xBqRyUAz8L5SsZvdDGEfS6My2dgREJBgf6IhH5/6rMrgJDTAWGd50xI8w="
+install:
+  # PUSH TO BACKUP REPO
+  - if [[ $REPO == BLESSED ]]; then
+      git fetch --unshallow;
+      git push -q https://soonhok:${BB_TOKEN}@bitbucket.org/leanprover/libraries.git +master;
+    fi
+
+script:
+  - echo done
+
+notifications:
+  email:
+    recipients:
+     - lean-build@googlegroups.com
+    on_success: change
+    on_failure: always
