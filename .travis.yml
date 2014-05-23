@@ -6,15 +6,45 @@ env:
     - secure: "TB8fB0nt7PorUYqb36jdXb68TkkOu3uuGqSfvc/DGPff7FgaW6yWdkHkJiPlUzyC/rtL5n8u/SMbAco37NI9rGz0nMYdyyXPlaiN/g7EhT2ovITkR8v90eF0/LA4AOxdyc8pkOpNa65DF2BGNxifKEwSkRGT9dAcbASztkRIwC8="
     # REPO=BLESSED - encrypt "BLESSED" with private key (travis-ci)
     - secure: "MWX9ZW/BSW9/YHJvn2wI/JFMdYT3iUlxpLeO6qDPIDoXbyxW5aOsUEzghknl/t0EsV7fepSxVhfXHx4kzOfvlPzlW5kJbT+mxIS9eRzkH7+C4sen1/xBqRyUAz8L5SsZvdDGEfS6My2dgREJBgf6IhH5/6rMrgJDTAWGd50xI8w="
+    # DROPBOX_KEY=[secure]          (to send binaries to dropbox, "access_token")
+    - secure: "ZjMUbcyNTVZyr+3fov6nsf2fd/LIo3o40xLyS/aT4Vgq+bppf4CC9m7HvwIkswmQa/Vnb5yW8ANCjt/VULEshprIswAzp0ntl4eFQlhAT8et/uH37ytLbLztbU1u6ZbNqYx2EwA/WOqe2Djy0qJ7A5DlFNui+/Fvz/ZOCgr1spQ="
 install:
   # PUSH TO BACKUP REPO
   - if [[ $REPO == BLESSED ]]; then
       git fetch --unshallow;
       git push -q https://soonhok:${BB_TOKEN}@bitbucket.org/leanprover/libraries.git +master;
     fi
+  # Install g++-4.8, gmp, lua52
+  - until sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test; do echo retry; done
+  - until sudo add-apt-repository --yes ppa:h-rayflood/llvm; do echo retry; done
+  - until sudo add-apt-repository --yes ppa:kalakris/cmake; do echo retry; done
+  - until sudo apt-get -qq update; do echo retry; done
+  - until sudo add-apt-repository --yes ppa:agent-8131/ppa && sudo apt-get -qq update && sudo apt-get -qq install libgoogle-perftools-dev; do echo retry; done
+  - until sudo apt-get -qq install libgmp-dev libmpfr-dev; do echo retry; done
+  - until sudo apt-get -qq install liblua5.2.0 lua5.2-0 lua5.2-dev; do echo retry; done
+  - until sudo apt-get -qq install libstdc++-4.8-dev; do echo retry; done
+  - until sudo apt-get -qq install g++-4.8; do echo retry; done
+  # Install Dropbox
+  - sudo apt-get -qq install python python-pip
+  - sudo pip install dropbox
+  - wget https://dl.dropboxusercontent.com/u/203889738/script/dropbox_upload.py
+  - chmod +x ./dropbox_upload.py
+  # Download pre-compiled lean-0.1
+  - wget https://dl.dropboxusercontent.com/u/203889738/release/lean-0.1-linux.tar.gz
+  - tar xvfz lean-0.1-linux.tar.gz
 
 script:
-  - echo done
+  # Compile
+  - make LEAN=`pwd`/lean-0.1-linux/bin/lean
+  - rm -rf lean-0.1-linux
+  # Copy to Dropbox
+  - mkdir release
+  - tar cvfz release/libraries.tar.gz `find . -name "*.olean"`
+  - mkdir libraries
+  - cp release/libraries.tar.gz libraries/
+  - cp release/libraries.tar.gz libraries/libraries_${TRAVIS_COMMIT}.tar.gz
+  - ./dropbox_upload.py --srcpath release --destpath /Public/release --dropbox-token ${DROPBOX_KEY}
+  - ./dropbox_upload.py --srcpath libraries --destpath /Public/libraries --dropbox-token ${DROPBOX_KEY}
 
 notifications:
   email:
