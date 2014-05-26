@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+for LEANFILE in $@
+do
+  DEPS=`grep "^import " $LEANFILE | cut -d ' ' -f 2- | sed -e "s/\([A-z][A-z0-9_]*\)/\1.olean/g" | tr "\n" " "`
+  echo "${LEANFILE//.lean/.olean}: ${DEPS}"
+done
