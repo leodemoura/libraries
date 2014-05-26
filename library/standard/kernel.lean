@@ -96,12 +96,12 @@ theorem contrapos {a b : Bool} (H : a → b) : ¬ b → ¬ a
 theorem absurd_elim {a : Bool} (b : Bool) (H1 : a) (H2 : ¬ a) : b
 := false_elim b (absurd H1 H2)
 
-theorem or_intro_left {a : Bool} (H : a) (b : Bool) : a ∨ b
+theorem or_intro_left {a : Bool} (b : Bool) (H : a) : a ∨ b
 := take c : Bool,
      assume (H1 : a → c) (H2 : b → c),
         H1 H
 
-theorem or_intro_right {b : Bool} (a : Bool) (H : b) : a ∨ b
+theorem or_intro_right (a : Bool) {b : Bool} (H : b) : a ∨ b
 := take c : Bool,
      assume (H1 : a → c) (H2 : b → c),
        H2 H
@@ -223,13 +223,13 @@ theorem case (P : Bool → Bool) (H1 : P true) (H2 : P false) (a : Bool) : P a
 
 theorem em (a : Bool) : a ∨ ¬ a
 := or_elim (boolcomplete a)
-     (assume Ht : a = true, or_intro_left (eqt_elim Ht) (¬ a))
+     (assume Ht : a = true, or_intro_left (¬ a) (eqt_elim Ht))
      (assume Hf : a = false, or_intro_right a (eqf_elim Hf))
 
 theorem boolcomplete_swapped (a : Bool) : a = false ∨ a = true
 := case (λ x, x = false ∨ x = true)
         (or_intro_right (true = false) (refl true))
-        (or_intro_left (refl false) (false = true))
+        (or_intro_left (false = true) (refl false))
         a
 
 theorem not_true : (¬ true) = false
@@ -330,33 +330,33 @@ theorem left_comm {A : (Type U)} {R : A -> A -> A} (comm : ∀ x y, R x y = R y 
                          ...    = R y (R x z) : assoc y x z
 
 theorem or_comm (a b : Bool) : (a ∨ b) = (b ∨ a)
-:= boolext (assume H, or_elim H (λ H1, or_intro_right b H1) (λ H2, or_intro_left H2 a))
-           (assume H, or_elim H (λ H1, or_intro_right a H1) (λ H2, or_intro_left H2 b))
+:= boolext (assume H, or_elim H (λ H1, or_intro_right b H1) (λ H2, or_intro_left a H2))
+           (assume H, or_elim H (λ H1, or_intro_right a H1) (λ H2, or_intro_left b H2))
 
 theorem or_assoc (a b c : Bool) : (a ∨ b) ∨ c ↔ a ∨ (b ∨ c)
 := boolext (assume H : (a ∨ b) ∨ c,
-                      or_elim H (λ H1 : a ∨ b, or_elim H1 (λ Ha : a, or_intro_left Ha (b ∨ c))
-                                                          (λ Hb : b, or_intro_right a (or_intro_left Hb c)))
+                      or_elim H (λ H1 : a ∨ b, or_elim H1 (λ Ha : a, or_intro_left (b ∨ c) Ha)
+                                                          (λ Hb : b, or_intro_right a (or_intro_left c Hb)))
                                 (λ Hc : c, or_intro_right a (or_intro_right b Hc)))
            (assume H : a ∨ (b ∨ c),
-                      or_elim H (λ Ha : a, (or_intro_left (or_intro_left Ha b) c))
-                                (λ H1 : b ∨ c, or_elim H1 (λ Hb : b, or_intro_left (or_intro_right a Hb) c)
+                      or_elim H (λ Ha : a, (or_intro_left c (or_intro_left b Ha)))
+                                (λ H1 : b ∨ c, or_elim H1 (λ Hb : b, or_intro_left c (or_intro_right a Hb))
                                                           (λ Hc : c, or_intro_right (a ∨ b) Hc)))
 
 theorem or_id (a : Bool) : a ∨ a ↔ a
 := boolext (assume H, or_elim H (λ H1, H1) (λ H2, H2))
-           (assume H, or_intro_left H a)
+           (assume H, or_intro_left a H)
 
 theorem or_false_left (a : Bool) : a ∨ false ↔ a
 := boolext (assume H, or_elim H (λ H1, H1) (λ H2, false_elim a H2))
-           (assume H, or_intro_left H false)
+           (assume H, or_intro_left false H)
 
 theorem or_false_right (a : Bool) : false ∨ a ↔ a
 := trans (or_comm false a) (or_false_left a)
 
 theorem or_true_left (a : Bool) : true ∨ a ↔ true
 := boolext (assume H : true ∨ a, trivial)
-           (assume H : true, or_intro_left trivial a)
+           (assume H : true, or_intro_left a trivial)
 
 theorem or_true_right (a : Bool) : a ∨ true ↔ true
 := trans (or_comm a true) (or_true_left a)
@@ -429,7 +429,7 @@ theorem imp_or (a b : Bool) : (a → b) ↔ ¬ a ∨ b
      (assume H : a → b,
         (or_elim (em a)
            (λ Ha  : a,   or_intro_right (¬ a) (H Ha))
-           (λ Hna : ¬ a, or_intro_left Hna b)))
+           (λ Hna : ¬ a, or_intro_left b Hna)))
      (assume H : ¬ a ∨ b,
         assume Ha : a,
           resolve_right H ((symm (not_not_eq a)) ◂ Ha))
@@ -442,7 +442,7 @@ theorem or_imp (a b : Bool) : a ∨ b ↔ (¬ a → b)
            (assume (Hb : b) (Hna : ¬ a), Hb)))
      (assume H : ¬ a → b,
         (or_elim (em a)
-           (assume Ha  : a,   or_intro_left Ha b)
+           (assume Ha  : a,   or_intro_left b Ha)
            (assume Hna : ¬ a, or_intro_right a (H Hna))))
 
 theorem not_congr {a b : Bool} (H : a ↔ b) : ¬ a ↔ ¬ b
@@ -482,7 +482,7 @@ theorem exists_unfold1 {A : (Type U)} {P : A → Bool} (a : A) (H : ∃ x : A, P
 := exists_elim H
      (λ (w : A) (H1 : P w),
         or_elim (em (w = a))
-          (λ Heq : w = a, or_intro_left (subst H1 Heq) (∃ x : A, x ≠ a ∧ P x))
+          (λ Heq : w = a, or_intro_left (∃ x : A, x ≠ a ∧ P x) (subst H1 Heq))
           (λ Hne : w ≠ a, or_intro_right (P a) (exists_intro w (and_intro Hne H1))))
 
 theorem exists_unfold2 {A : (Type U)} {P : A → Bool} (a : A) (H : P a ∨ (∃ x : A, x ≠ a ∧ P x)) : ∃ x : A, P x
@@ -543,7 +543,7 @@ theorem not_and (a b : Bool) : ¬ (a ∧ b) ↔ ¬ a ∨ ¬ b
                (assume Ha, or_elim (em b)
                      (assume Hb, absurd_elim (¬ a ∨ ¬ b) (and_intro Ha Hb) H)
                      (assume Hnb, or_intro_right (¬ a) Hnb))
-               (assume Hna, or_intro_left Hna (¬ b)))
+               (assume Hna, or_intro_left (¬ b) Hna))
            (assume (H : ¬ a ∨ ¬ b) (N : a ∧ b),
                or_elim H
                  (assume Hna, absurd (and_elim_left N) Hna)
@@ -554,7 +554,7 @@ theorem not_and_elim {a b : Bool} (H : ¬ (a ∧ b)) : ¬ a ∨ ¬ b
 
 theorem not_or (a b : Bool) : ¬ (a ∨ b) ↔ ¬ a ∧ ¬ b
 := boolext (assume H, or_elim (em a)
-               (assume Ha, absurd_elim (¬ a ∧ ¬ b) (or_intro_left Ha b) H)
+               (assume Ha, absurd_elim (¬ a ∧ ¬ b) (or_intro_left b Ha) H)
                (assume Hna, or_elim (em b)
                    (assume Hb, absurd_elim (¬ a ∧ ¬ b) (or_intro_right a Hb) H)
                    (assume Hnb, and_intro Hna Hnb)))
@@ -730,13 +730,13 @@ theorem forall_or_distribute_right {A : (Type U)} (p : Bool) (φ : A → Bool) :
 := boolext
      (assume H : (∀ x, p ∨ φ x),
         or_elim (em p)
-            (λ Hp  : p,   or_intro_left Hp (∀ x, φ x))
+            (λ Hp  : p,   or_intro_left (∀ x, φ x) Hp)
             (λ Hnp : ¬ p, or_intro_right p  (take x,
                                              resolve_right (H x) Hnp)))
      (assume H : (p ∨ ∀ x, φ x),
         take x,
             or_elim H
-              (λ H1 : p,          or_intro_left H1 (φ x))
+              (λ H1 : p,          or_intro_left (φ x) H1)
               (λ H2 : (∀ x, φ x), or_intro_right p  (H2 x)))
 
 theorem forall_or_distribute_left {A : Type} (p : Bool) (φ : A → Bool) : (∀ x, φ x ∨ p) = ((∀ x, φ x) ∨ p)
@@ -744,11 +744,11 @@ theorem forall_or_distribute_left {A : Type} (p : Bool) (φ : A → Bool) : (∀
      (assume H : (∀ x, φ x ∨ p),
         or_elim (em p)
             (λ Hp  : p,   or_intro_right (∀ x, φ x) Hp)
-            (λ Hnp : ¬ p, or_intro_left (take x, resolve_left (H x) Hnp) p))
+            (λ Hnp : ¬ p, or_intro_left p (take x, resolve_left (H x) Hnp)))
      (assume H : (∀ x, φ x) ∨ p,
         take x,
             or_elim H
-              (λ H1 : (∀ x, φ x), or_intro_left (H1 x) p)
+              (λ H1 : (∀ x, φ x), or_intro_left p (H1 x))
               (λ H2 : p,           or_intro_right (φ x) H2))
 
 theorem forall_and_distribute {A : (Type U)} (φ ψ : A → Bool) : (∀ x, φ x ∧ ψ x) ↔ (∀ x, φ x) ∧ (∀ x, ψ x)
@@ -773,13 +773,13 @@ theorem exists_or_distribute {A : (Type U)} (φ ψ : A → Bool) : (∃ x, φ x 
     (assume H : (∃ x, φ x ∨ ψ x),
         obtain (w : A) (Hw : φ w ∨ ψ w), from H,
             or_elim Hw
-                (λ Hw1 : φ w, or_intro_left (exists_intro w Hw1) (∃ x, ψ x))
+                (λ Hw1 : φ w, or_intro_left (∃ x, ψ x) (exists_intro w Hw1))
                 (λ Hw2 : ψ w, or_intro_right (∃ x, φ x) (exists_intro w Hw2)))
     (assume H : (∃ x, φ x) ∨ (∃ x, ψ x),
         or_elim H
             (λ H1 : (∃ x, φ x),
                 obtain (w : A) (Hw : φ w), from H1,
-                    exists_intro w (or_intro_left Hw (ψ w)))
+                    exists_intro w (or_intro_left (ψ w) Hw))
             (λ H2 : (∃ x, ψ x),
                 obtain (w : A) (Hw : ψ w), from H2,
                     exists_intro w (or_intro_right (φ w) Hw)))
