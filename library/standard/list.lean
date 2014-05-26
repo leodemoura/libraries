@@ -10,18 +10,19 @@
 
 import macros
 import tactic 
+import nat
 
-using Nat
+using nat
 
 variable list : Type → Type
 
 variable nil {T : Type} : list T
 
-check (@nil Nat)
+check (@nil nat)
 
 variable cons {T : Type} (x : T) (l : list T) : list T
 
-check (cons 1 (cons 2 nil))
+check (cons (succ zero) (cons (succ (succ zero)) nil))
 
 axiom list_rec {T : Type} {C : list T → Type} (c : C nil) 
     (g : forall x : T, forall l : list T, forall c : C l, C (cons x l)) :
@@ -77,12 +78,12 @@ theorem concat_assoc {T : Type} (s t u : list T) : concat (concat s t) u = conca
   ) s
 
 definition length {T : Type} : list T → ℕ
-:= list_rec 0 (fun x l m, m + 1)
+:= list_rec zero (fun x l m, succ m)
 
-theorem length_nil {T : Type} : length (@nil T) = 0
+theorem length_nil {T : Type} : length (@nil T) = zero
 := list_rec_nil _ _
 
-theorem length_cons {T : Type} (x : T) (t : list T) : length (cons x t) = length t + 1
+theorem length_cons {T : Type} (x : T) (t : list T) : length (cons x t) = succ (length t)
 := list_rec_cons _ _ _ _ 
 
 -- theorem length_concat {T : Type} (s t : list T) : length (concat s t) = length s + length t
