@@ -49,12 +49,12 @@ set_opaque pred true
 theorem zero_or_succ (n:nat) : n = zero ∨ n = succ (pred n)
 := 
   induction_on n
-    (or_intro_left (refl zero) _) 
+    (or_intro_left _ (refl zero)) 
     (take m IH, or_intro_right _ 
       (show s m = s (pred (s m)), from congr2 s (symm (pred_succ m))))
 
 theorem zero_or_succ2 (n:nat) : n = zero ∨ ∃k, n = succ k
-:= or_elim (zero_or_succ n) (take H, or_intro_left H _) (take H, or_intro_right _ (exists_intro (pred n) H))
+:= or_elim (zero_or_succ n) (take H, or_intro_left _ H) (take H, or_intro_right _ (exists_intro (pred n) H))
 
 theorem nat_discriminate {B : Bool} {n : nat} (H1: n = zero → B) (H2 : ∀ m, n = succ m → B) : B
 := 
@@ -216,7 +216,6 @@ theorem induction_plus_one {P : nat → Bool} (a : nat) (H1 : P zero)
 --theorem foo_zz {P : nat → Bool} (a : nat) (H : P zz) (H2 : false) : P a
 --:= induction_on a H (false_elim (forall k IH, P (succ k)) H2)
 
-
 theorem two_step_induction_on {P : nat → Bool} (a : nat) (H1 : P zero) (H2 : P (succ zero)) 
     (H3 : ∀ (n : nat) (IH1 : P n) (IH2 : P (succ n)), P (succ (succ n))) : P a
 := 
@@ -343,7 +342,7 @@ theorem mul_one_left (n : nat) : succ zero * n = n
 theorem mul_eq_zero {n m : nat} (H : n * m = zero) : n = zero ∨ m = zero
 := 
   nat_discriminate 
-    (take Hn : n = zero, or_intro_left Hn _)
+    (take Hn : n = zero, or_intro_left _ Hn)
     (take (k : nat),
       assume (Hk : n = succ k),
       nat_discriminate 
@@ -373,9 +372,9 @@ theorem mul_eq_succ_left {n m k : nat} (H : n * m = succ k) : exists l, n = succ
 theorem mul_eq_succ_right {n m k : nat} (H : n * m = succ k) : exists l, m = succ l
 := mul_eq_succ_left (subst H (mul_comm n m))
 
-theorem mul_left_inj {n m k : nat} : succ n * m = succ n * k → m = k
+theorem mul_left_inj {n m k : nat} (H : succ n * m = succ n * k) : m = k
 :=
-  have HH : ∀ m, succ n * m = succ n * k → m = k, from
+  have general : ∀ m, succ n * m = succ n * k → m = k, from
     induction_on k
       (take m:nat,
         assume H : succ n * m = succ n * zero,
@@ -405,7 +404,7 @@ theorem mul_left_inj {n m k : nat} : succ n * m = succ n * k → m = k
         calc
           m = succ l2 : Hm
             ... = succ l : {IH l2 H4}),
-  HH m
+  general m H
 
 theorem mul_right_inj {n m k : nat} (H : n * succ m = k * succ m) : n = k
 :=
@@ -420,23 +419,23 @@ theorem mul_eq_one_left {n m : nat} (H : n * m = succ zero) : n = succ zero
 := 
   obtain (k : nat) (Hm : m = succ k), from (mul_eq_succ_right H),
   obtain (l1 : nat) (Hn : n = succ l1), from (mul_eq_succ_left H),
-      nat_discriminate
-        (take Hl : l1 = zero, 
-          calc 
-            n = succ l1 : Hn
-              ... = succ zero : {Hl})
-        (take (l2 : nat), 
-        assume (Hl : l1 = succ l2), 
-        have H2 : succ zero = succ (succ (succ (succ l2) * k + l2)), 
-          from calc
-            succ zero = n * m : symm H
-              ... = n * succ k : { Hm }
-              ... = succ l1 * succ k : { Hn }
-              ... = succ (succ l2) * succ k : { Hl }
-              ... = succ (succ l2) * k + succ (succ l2) : { mul_succ_right _ _ }
-              ... = succ (succ (succ l2) * k + succ l2): add_succ_right _ _
-              ... = succ (succ (succ (succ l2) * k + l2)) : { add_succ_right _ _ },
-          absurd_elim _ (succ_inj H2) (zero_ne_succ _))
+    nat_discriminate
+      (take Hl : l1 = zero, 
+        calc 
+          n = succ l1 : Hn
+            ... = succ zero : {Hl})
+      (take (l2 : nat), 
+      assume (Hl : l1 = succ l2), 
+      have H2 : succ zero = succ (succ (succ (succ l2) * k + l2)), 
+        from calc
+          succ zero = n * m : symm H
+            ... = n * succ k : { Hm }
+            ... = succ l1 * succ k : { Hn }
+            ... = succ (succ l2) * succ k : { Hl }
+            ... = succ (succ l2) * k + succ (succ l2) : { mul_succ_right _ _ }
+            ... = succ (succ (succ l2) * k + succ l2): add_succ_right _ _
+            ... = succ (succ (succ (succ l2) * k + l2)) : { add_succ_right _ _ },
+        absurd_elim _ (succ_inj H2) (zero_ne_succ _))
 
 theorem mul_eq_one_right {n m : nat} (H : n * m = succ zero) : m = succ zero 
 := mul_eq_one_left (subst H (mul_comm n m))
@@ -461,8 +460,13 @@ set_opaque le true
 theorem le_refl (n : nat) : n ≤ n 
 := le_intro (add_zero_right n)
 
-theorem le_zero (n : nat) : zero ≤ n 
+theorem zero_le (n : nat) : zero ≤ n 
 := le_intro (add_zero_left n)
+
+theorem zero_le_inv {n:nat} (H : n ≤ zero) : n = zero
+:=
+  obtain (k : nat) (Hk : n + k = zero), from le_elim H,
+  add_eq_zero_left Hk
 
 theorem le_trans {n m k : nat} (H1 : n ≤ m) (H2 : m ≤ k) : n ≤ k
 := 
@@ -611,6 +615,27 @@ theorem lt_le {n m : nat} (H : n < m) : n ≤ m
         ... = succ n + k : symm (add_succ_left n k)
         ... = m : Hk)
 
+theorem le_lt_or {n m : nat} (H : n ≤ m) : n < m ∨ n = m
+:=
+  obtain (k : nat) (Hk : n + k = m), from (le_elim H),
+  nat_discriminate
+    (assume H3 : k = zero,
+      have Heq : n = m,
+        from calc
+          n = n + zero : symm (add_zero_right n)
+            ... = n + k : {symm H3}
+            ... = m : Hk,
+      or_intro_right _ Heq)
+    (take l:nat, 
+      assume H3 : k = succ l,
+      have Hlt : n < m, from
+        (lt_intro 
+          (calc
+            succ n + l = n + succ l : add_move_succ n l
+              ... = n + k : {symm H3}
+              ... = m : Hk)),
+      or_intro_left _ Hlt)
+
 theorem le_lt {n m : nat} (H1 : n ≤ m)  (H2 : n ≠ m) : n < m
 :=
   obtain (k : nat) (Hk : n + k = m), from (le_elim H1),
@@ -733,7 +758,7 @@ axiom ne_lt_succ {n m : nat} (H1 : n ≠ m) (H2 : n < succ m) : n < m
 --                                                 ... =  n + (1 + w)  : { add_comm _ _ }
 --                                                 ... =  n + 1 + w    : symm (add_assoc _ _ _)
 --                                                 ... =  m + 1        : Hw)
---      in nat_discriminate (λ Hz : w = 0, absurd_elim (n < m) (calc n   = n + 0  : symm (add_zeror _)
+--      in nat_discriminate (λ Hz : w = 0, absurd_elim (n < m) (calc n   = n + 0  : symm (add_zero_right _)
 --                                                               ... = n + w  : { symm Hz }
 --                                                               ... = m      : L)
 --                                                          H1)
