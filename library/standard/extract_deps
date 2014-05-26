@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
+EXCEPT="macros tactic"
+
 for LEANFILE in $@
 do
-  DEPS=`grep "^import " $LEANFILE | cut -d ' ' -f 2- | sed -e "s/\([A-z][A-z0-9_]*\)/\1.olean/g" | tr "\n" " "`
-  echo "${LEANFILE//.lean/.olean}: ${DEPS}"
+  OLEANFILE=${LEANFILE//.lean/.olean}
+  DEPS=`grep "^import " $LEANFILE | cut -d ' ' -f 2- | tr "\n" " "`
+  echo -n "$OLEANFILE:"
+  for DEP in $DEPS
+  do
+    [[ ! $EXCEPT =~ $DEP ]] && echo -n " "`echo $DEP | sed -e "s/\([A-z][A-z0-9_]*\)/\1.olean/g"`
+  done
+  echo ""
 done
