@@ -10,7 +10,7 @@ import macros
 
 variable nat : Type
 alias ℕ : nat
---builtin numeral -- When using numerals, first replace "(succ zero)" and "succ zero" by "1" and then "zero" by "0" (except in names)
+--builtin numeral -- When transitioning to numerals, first replace "(succ zero)" and "succ zero" by "1" and then "zero" by "0" (except in names)
 namespace nat
 variable zero : nat
 alias z : zero
@@ -30,11 +30,11 @@ theorem zero_ne_succ (n:nat) : zero ≠ succ n
 :=
   not_intro 
     (take H: zero = succ n,
-    have H2 : true = false, from      
-      (let f : nat -> Bool := (nat_rec true (fun a b,false))
-        in calc true = f zero : symm (nat_rec_zero _ _)
-          ... = f (succ n) : {H}
-	       ... = false : nat_rec_succ _ _ _),
+      have H2 : true = false, from      
+        (let f : nat -> Bool := (nat_rec true (fun a b,false))
+          in calc true = f zero : symm (nat_rec_zero _ _)
+            ... = f (succ n) : {H}
+	         ... = false : nat_rec_succ _ _ _),
       absurd H2 true_ne_false)
 
 definition pred (a : nat) := nat_rec zero (fun m x, m) a
@@ -49,12 +49,12 @@ set_opaque pred true
 theorem zero_or_succ (n:nat) : n = zero ∨ n = succ (pred n)
 := 
   induction_on n
-    (or_introl (refl zero) _) 
-    (take m IH, or_intror _ 
+    (or_intro_left (refl zero) _) 
+    (take m IH, or_intro_right _ 
       (show s m = s (pred (s m)), from congr2 s (symm (pred_succ m))))
 
 theorem zero_or_succ2 (n:nat) : n = zero ∨ ∃k, n = succ k
-:= or_elim (zero_or_succ n) (take H, or_introl H _) (take H, or_intror _ (exists_intro (pred n) H))
+:= or_elim (zero_or_succ n) (take H, or_intro_left H _) (take H, or_intro_right _ (exists_intro (pred n) H))
 
 theorem nat_discriminate {B : Bool} {n : nat} (H1: n = zero → B) (H2 : ∀ m, n = succ m → B) : B
 := 
@@ -72,8 +72,8 @@ theorem succ_ne_self (n:nat) : n ≠ succ n
 := 
   not_intro (induction_on n
     (take H : zero = succ zero, 
-    have neq : zero ≠ succ zero, from zero_ne_succ zero,
-      iff_eliml (neq_elim neq) H)
+      have neq : zero ≠ succ zero, from zero_ne_succ zero,
+      absurd H neq)
     (take k IH H, IH (succ_inj H)))
 
 -------------------------------------------------- add
@@ -93,27 +93,31 @@ theorem add_zero_left (n:nat) : zero + n = n
   induction_on n 
     (add_zero_right zero) 
     (take m IH, show zero + s m = s m, from
-      calc zero + succ m = succ (zero + m) : add_succ_right _ _
-   	  ... = succ m : {IH})
+      calc 
+        zero + succ m = succ (zero + m) : add_succ_right _ _
+   	    ... = succ m : {IH})
 
 theorem add_succ_left (n m:nat) : (succ n) + m = succ (n + m)
 := 
   induction_on m
-    (calc succ n + zero = succ n : add_zero_right (succ n)
-      ... = succ (n + zero) : {symm (add_zero_right n)})
+    (calc 
+      succ n + zero = succ n : add_zero_right (succ n)
+        ... = succ (n + zero) : {symm (add_zero_right n)})
     (take k IH, 
-      calc succ n + succ k = succ (succ n + k) : add_succ_right _ _
-        ... = succ (succ (n + k)) : {IH}
-        ... = succ (n + succ k) : {symm (add_succ_right _ _)})
+      calc 
+        succ n + succ k = succ (succ n + k) : add_succ_right _ _
+          ... = succ (succ (n + k)) : {IH}
+          ... = succ (n + succ k) : {symm (add_succ_right _ _)})
 
 theorem add_comm (n m:nat) : n + m = m + n
 := 
   induction_on m 
     (trans (add_zero_right _) (symm (add_zero_left _))) 
     (take k IH, 
-      calc n + succ k = succ (n+k) : add_succ_right _ _
-        ... = succ (k + n) : {IH}
-        ... = succ k + n : symm (add_succ_left _ _))
+      calc 
+        n + succ k = succ (n+k) : add_succ_right _ _
+          ... = succ (k + n) : {IH}
+          ... = succ k + n : symm (add_succ_left _ _))
 
 theorem add_move_succ (n m:nat) : succ n + m = n + succ m
 := 
@@ -147,19 +151,18 @@ theorem add_left_inj {n m k : nat} : n + m = n + k → m = k
 :=
   induction_on n
     (take H : zero + m = zero + k,
-    calc 
-      m = zero + m : symm (add_zero_left m)
-        ... = zero + k : H
-        ... = k : add_zero_left k)
+      calc 
+        m = zero + m : symm (add_zero_left m)
+          ... = zero + k : H
+          ... = k : add_zero_left k)
     (take (n : nat) (IH : n + m = n + k → m = k) (H : succ n + m = succ n + k),
-    have H2 : succ (n + m) = succ (n + k),
-    from calc 
-      succ (n + m) = succ n + m : symm (add_succ_left n m)
-        ... = succ n + k : H
-        ... = succ (n + k) : add_succ_left n k,
-    have H3 : n + m = n + k, 
-      from succ_inj H2, 
-    IH H3)
+      have H2 : succ (n + m) = succ (n + k),
+      from calc 
+        succ (n + m) = succ n + m : symm (add_succ_left n m)
+          ... = succ n + k : H
+          ... = succ (n + k) : add_succ_left n k,
+      have H3 : n + m = n + k, from succ_inj H2, 
+      IH H3)
 
 theorem add_right_inj {n m k : nat} (H : n + m = k + m) : n = k
 :=
@@ -174,14 +177,13 @@ theorem add_eq_zero_left {n m : nat} : n + m = zero → n = zero
 :=
   induction_on n (take (H : zero + m = zero), refl zero)
     (take k IH,
-    assume (H : succ k + m = zero), 
-    false_elim (succ k = zero)
-      (absurd 
+      assume (H : succ k + m = zero), 
+      absurd_elim (succ k = zero)
         (show zero = succ (k + m), from
           calc
             zero = succ k + m : symm H
               ... = succ (k + m) : add_succ_left k m)
-        (zero_ne_succ (k + m))))
+        (zero_ne_succ (k + m)))
 
 theorem add_eq_zero_right {n m : nat} (H : n + m = zero) : m = zero
 := add_eq_zero_left (trans (add_comm m n) H)
@@ -190,12 +192,16 @@ theorem add_eq_zero {n m : nat} (H : n + m = zero) : n = zero ∧ m = zero
 := and_intro (add_eq_zero_left H) (add_eq_zero_right H)
 
 theorem add_one (n:nat) : n + succ zero = succ n
-:= calc n + succ zero = succ (n + zero) : add_succ_right _ _
-   	     ... = succ n : {add_zero_right _}
+:= 
+  calc 
+    n + succ zero = succ (n + zero) : add_succ_right _ _
+      ... = succ n : {add_zero_right _}
 
 theorem add_one_rev (n:nat) : succ zero + n = succ n
-:= calc succ zero + n = succ (zero + n) : add_succ_left _ _
-   	     ... = succ n : {add_zero_left _}
+:= 
+  calc 
+    succ zero + n = succ (zero + n) : add_succ_left _ _
+      ... = succ n : {add_zero_left _}
 
 --the following theorem has a terrible name, but since the name is not a substring or superstring of another name, it is at least easy to globally replace it
 theorem induction_plus_one {P : nat → Bool} (a : nat) (H1 : P zero)
@@ -218,10 +224,10 @@ theorem two_step_induction_on {P : nat → Bool} (a : nat) (H1 : P zero) (H2 : P
     induction_on a
       (and_intro H1 H2)
       (take k IH,
-        have IH1 : P k, from and_eliml IH,
-        have IH2 : P (succ k), from and_elimr IH,
+        have IH1 : P k, from and_elim_left IH,
+        have IH2 : P (succ k), from and_elim_right IH,
           and_intro IH2 (H3 k IH1 IH2)),
-    and_eliml stronger
+    and_elim_left stronger
 
 -------------------------------------------------- mul
 
@@ -260,7 +266,8 @@ theorem mul_succ_left (n m:nat) : (succ n) * m = (n * m) + m
 --            ... = (n * k) + succ (k + n) : {add_succ_right _ _}
 --            ... = (n * k) + (succ k + n) : {symm (add_succ_left _ _)}
 --            ... = (n * k) + (n + succ k) : {add_comm _ _}
-   	      ... = (n * k) + (n + succ k) : {add_comm_succ _ _} --use either this line or three previous lines
+--use either next line or three previous lines
+   	      ... = (n * k) + (n + succ k) : {add_comm_succ _ _} 
             ... = (n * k) + n + succ k : symm (add_assoc _ _ _)
             ... = (n * succ k) + succ k : {symm (mul_succ_right n k)})
 
@@ -333,23 +340,72 @@ theorem mul_one_left (n : nat) : succ zero * n = n
     succ zero * n = n * succ zero : mul_comm _ _
       ... = n : mul_one_right n
 
-axiom mul_left_inj {n m k : nat} : succ n * m = succ n * k → m = k
--- :=
---   induction_on n
---     (take H : succ zero * m = succ zero * k,
---     calc 
---       m = succ zero * m : symm (mul_one_left m)
---         ... = succ zero * k : H
---         ... = k : mul_one_left k)
---     (take (n : nat) (IH : succ n * m = succ n + k → m = k) (H : succ n + m = succ n + k),
---     have H2 : succ (n + m) = succ (n + k),
---     from calc 
---       succ (n + m) = succ n + m : symm (add_succ_left n m)
---         ... = succ n + k : H
---         ... = succ (n + k) : add_succ_left n k,
---     have H3 : n + m = n + k, 
---       from succ_inj H2, 
---     IH H3)
+theorem mul_eq_zero {n m : nat} (H : n * m = zero) : n = zero ∨ m = zero
+:= 
+  nat_discriminate 
+    (take Hn : n = zero, or_intro_left Hn _)
+    (take (k : nat),
+      assume (Hk : n = succ k),
+      nat_discriminate 
+        (take (Hm : m = zero), or_intro_right _ Hm)
+        (take (l : nat),
+          assume (Hl : m = succ l),
+          have Heq : succ (k * succ l + l) = n * m, from
+            symm (calc
+              n * m = n * succ l : { Hl }
+                ... = succ k * succ l : { Hk }
+                ... = k * succ l + succ l : mul_succ_left _ _
+                ... = succ (k * succ l + l) : add_succ_right _ _),
+          absurd_elim _  (symm (trans Heq H)) (zero_ne_succ _)))
+
+theorem mul_eq_succ_left {n m k : nat} (H : n * m = succ k) : exists l, n = succ l
+:= 
+  nat_discriminate
+    (assume H2 : n = zero,
+      absurd_elim _
+        (calc
+          zero = zero * m : symm (mul_zero_left m)
+            ... = n * m : {symm H2}
+            ... = succ k : H)
+        (zero_ne_succ k))
+    (take l Hl, exists_intro l Hl)
+
+theorem mul_eq_succ_right {n m k : nat} (H : n * m = succ k) : exists l, m = succ l
+:= mul_eq_succ_left (subst H (mul_comm n m))
+
+theorem mul_left_inj {n m k : nat} : succ n * m = succ n * k → m = k
+:=
+  have HH : ∀ m, succ n * m = succ n * k → m = k, from
+    induction_on k
+      (take m:nat,
+        assume H : succ n * m = succ n * zero,
+        have H2 : succ n * m = zero,
+          from calc
+            succ n * m = succ n * zero : H
+              ... = zero : mul_zero_right (succ n),
+        have H3 : succ n = zero ∨ m = zero, from mul_eq_zero H2,
+        resolve_right H3 (ne_symm (zero_ne_succ n)))
+      (take (l : nat),
+        assume (IH : ∀ m, succ n * m = succ n * l → m = l),
+        take (m : nat),
+        assume (H : succ n * m = succ n * succ l), 
+        have H2 : succ n * m = succ (succ n * l + n),
+          from calc
+            succ n * m = succ n * succ l : H
+              ... = succ n * l + succ n : mul_succ_right (succ n) l
+              ... = succ (succ n * l + n) : add_succ_right _ n,
+        obtain (l2:nat) (Hm : m = succ l2), from mul_eq_succ_right H2,
+        have H3 : succ n * l2 + succ n = succ n * l + succ n,
+          from calc
+            succ n * l2 + succ n = succ n * succ l2 : symm (mul_succ_right (succ n) l2)
+              ... = succ n * m :  {symm Hm} --doesn't work
+              ... = succ n * succ l : H
+              ... = succ n * l + succ n : mul_succ_right (succ n) l,
+        have H4 : succ n * l2 = succ n * l, from add_right_inj H3,
+        calc
+          m = succ l2 : Hm
+            ... = succ l : {IH l2 H4}),
+  HH m
 
 theorem mul_right_inj {n m k : nat} (H : n * succ m = k * succ m) : n = k
 :=
@@ -360,29 +416,33 @@ theorem mul_right_inj {n m k : nat} (H : n * succ m = k * succ m) : n = k
       ... = succ m * k : mul_comm k (succ m),
     mul_left_inj H2
 
-theorem mul_eq_zero {n m : nat} (H : n * m = zero) : n = zero ∨ m = zero
+theorem mul_eq_one_left {n m : nat} (H : n * m = succ zero) : n = succ zero 
 := 
-  nat_discriminate 
-    (take Hn : n = zero, or_introl Hn _)
-    (take (k : nat),
-    assume (Hk : n = succ k),
-    nat_discriminate 
-      (take (Hm : m = zero), or_intror _ Hm)
-      (take (l : nat),
-      assume (Hl : m = succ l),
-      have Heq : succ (k * succ l + l) = n * m, from
-        symm (calc
-          n * m = n * succ l : { Hl }
-            ... = succ k * succ l : { Hk }
-            ... = k * succ l + succ l : mul_succ_left _ _
-            ... = succ (k * succ l + l) : add_succ_right _ _),
-      absurd_elim _  (symm (trans Heq H)) (zero_ne_succ _)))
+  obtain (k : nat) (Hm : m = succ k), from (mul_eq_succ_right H),
+  obtain (l1 : nat) (Hn : n = succ l1), from (mul_eq_succ_left H),
+      nat_discriminate
+        (take Hl : l1 = zero, 
+          calc 
+            n = succ l1 : Hn
+              ... = succ zero : {Hl})
+        (take (l2 : nat), 
+        assume (Hl : l1 = succ l2), 
+        have H2 : succ zero = succ (succ (succ (succ l2) * k + l2)), 
+          from calc
+            succ zero = n * m : symm H
+              ... = n * succ k : { Hm }
+              ... = succ l1 * succ k : { Hn }
+              ... = succ (succ l2) * succ k : { Hl }
+              ... = succ (succ l2) * k + succ (succ l2) : { mul_succ_right _ _ }
+              ... = succ (succ (succ l2) * k + succ l2): add_succ_right _ _
+              ... = succ (succ (succ (succ l2) * k + l2)) : { add_succ_right _ _ },
+          absurd_elim _ (succ_inj H2) (zero_ne_succ _))
 
-axiom mul_eq_one_left {n m : nat} (H : n * m = succ zero) : n = succ zero 
+theorem mul_eq_one_right {n m : nat} (H : n * m = succ zero) : m = succ zero 
+:= mul_eq_one_left (subst H (mul_comm n m))
 
-axiom mul_eq_one_right {n m : nat} (H : n * m = succ zero) : m = succ zero 
-
-axiom mul_eq_one {n m : nat} (H : n * m = succ zero) : n = succ zero ∧ m = succ zero 
+theorem mul_eq_one {n m : nat} (H : n * m = succ zero) : n = succ zero ∧ m = succ zero 
+:= and_intro (mul_eq_one_left H) (mul_eq_one_right H)
 
 -------------------------------------------------- le
 
