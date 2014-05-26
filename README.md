@@ -1,3 +1,5 @@
+<a href="https://travis-ci.org/leanprover/libraries"><img src="https://travis-ci.org/leanprover/libraries.svg?branch=master"/></a>
+
 Lean Libraries
 ==============
 
