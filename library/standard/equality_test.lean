@@ -4,6 +4,7 @@
 --
 ----------------------------------------------------------------------------------------------------
 
+import kernel
 import macros
 
 -- the natural axioms for equality, together with refl
