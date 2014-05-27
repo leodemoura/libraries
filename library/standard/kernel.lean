@@ -259,6 +259,9 @@ add_rewrite not_not_eq
 theorem not_neq {A : (Type U)} (a b : A) : ¬ (a ≠ b) ↔ a = b
 := not_not_eq (a = b)
 
+theorem neq_symm {A : (Type U)} {a b : A} (H : a ≠ b) : b ≠ a
+:= take (H2 : b = a), H (symm H2)
+
 add_rewrite not_neq
 
 theorem not_neq_elim {A : (Type U)} {a b : A} (H : ¬ (a ≠ b)) : a = b
@@ -329,6 +332,16 @@ theorem left_comm {A : (Type U)} {R : A -> A -> A} (comm : ∀ x y, R x y = R y 
                          ...    = R (R y x) z : { comm x y }
                          ...    = R y (R x z) : assoc y x z
 
+theorem right_comm {A : (Type U)} {R : A -> A -> A} (comm : ∀ x y, R x y = R y x) (assoc : ∀ x y z, R (R x y) z = R x (R y z)) :
+        ∀ x y z, R (R x y) z = R (R x z) y
+:=
+  take x y z,
+    calc
+      R (R x y) z = R x (R y z) : assoc x y z
+        ... = R x (R z y) : { comm y z }
+        ... = R (R x z) y : symm (assoc x z y)
+
+
 theorem or_comm (a b : Bool) : (a ∨ b) = (b ∨ a)
 := boolext (assume H, or_elim H (λ H1, or_intro_right b H1) (λ H2, or_intro_left a H2))
            (assume H, or_elim H (λ H1, or_intro_right a H1) (λ H2, or_intro_left b H2))
@@ -364,7 +377,7 @@ theorem or_true_right (a : Bool) : a ∨ true ↔ true
 theorem or_tauto (a : Bool) : a ∨ ¬ a ↔ true
 := eqt_intro (em a)
 
-theorem or_left_comm (a b c : Bool) : a ∨ (b ∨ c) ↔ b ∨ (a ∨ c)
+theorem or_left_comm (a b c : Bool) : a ∨ (b ∨ c) ↔ b ∨ (a ∨ c) --suggestion: rename to or_comm_left
 := left_comm or_comm or_assoc a b c
 
 add_rewrite or_comm or_assoc or_id or_false_left or_false_right or_true_left or_true_right or_tauto or_left_comm
@@ -399,7 +412,7 @@ theorem and_absurd (a : Bool) : a ∧ ¬ a ↔ false
 := boolext (assume H, absurd (and_elim_left H) (and_elim_right H))
            (assume H, false_elim (a ∧ ¬ a) H)
 
-theorem and_left_comm (a b c : Bool) : a ∧ (b ∧ c) ↔ b ∧ (a ∧ c)
+theorem and_left_comm (a b c : Bool) : a ∧ (b ∧ c) ↔ b ∧ (a ∧ c) --suggestion: rename to and_comm_left
 := left_comm and_comm and_assoc a b c
 
 add_rewrite and_comm and_assoc and_id and_false_left and_false_right and_true_left and_true_right and_absurd and_left_comm
@@ -678,7 +691,7 @@ theorem imp_congr_left {a b c d : Bool} (H_bd : ∀ (H_a : a), b = d) (H_ac : �
              (λ H_d : d,
                  calc (a → b) = (false → b)   :  { eqf_intro H_na }
                           ...  = true           : imp_false_left b
-                          ...  = (c → true)    : symm (imp_true_right c) 
+                          ...  = (c → true)    : symm (imp_true_right c)
                           ...  = (c → d)       : { symm (eqt_intro H_d) })
              (λ H_nd : ¬ d,
                  calc (a → b) = (false → b) : { eqf_intro H_na }
