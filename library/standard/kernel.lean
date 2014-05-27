@@ -57,16 +57,16 @@ infixr 35 ∧  : and
 
 definition implies (a b : Bool) := a → b
 
-definition neq {A : (Type U)} (a b : A) := ¬ (a = b)
-infix 50 ≠ : neq
+definition ne {A : (Type U)} (a b : A) := ¬ (a = b)
+infix 50 ≠ : ne
 
-theorem neq_intro {A : (Type U)} {a b : A} (H : (a = b) → false) : a ≠ b
+theorem ne_intro {A : (Type U)} {a b : A} (H : (a = b) → false) : a ≠ b
 := H
 
-theorem neq_elim {A : (Type U)} {a b : A} (H1 : (a ≠ b)) (H2 : (a = b)) : false
+theorem ne_elim {A : (Type U)} {a b : A} (H1 : (a ≠ b)) (H2 : (a = b)) : false
 := H1 H2
 
-theorem neq_irrefl {A : (Type U)} {a : A} (H : a ≠ a) : false
+theorem ne_irrefl {A : (Type U)} {a : A} (H : a ≠ a) : false
 := H (refl a)
 
 definition iff (a b : Bool) := a = b
@@ -256,16 +256,13 @@ theorem not_not_eq (a : Bool) : (¬ ¬ a) = a
 
 add_rewrite not_not_eq
 
-theorem not_neq {A : (Type U)} (a b : A) : ¬ (a ≠ b) ↔ a = b
+theorem not_ne {A : (Type U)} (a b : A) : ¬ (a ≠ b) ↔ a = b
 := not_not_eq (a = b)
 
-theorem neq_symm {A : (Type U)} {a b : A} (H : a ≠ b) : b ≠ a
-:= take (H2 : b = a), H (symm H2)
+add_rewrite not_ne
 
-add_rewrite not_neq
-
-theorem not_neq_elim {A : (Type U)} {a b : A} (H : ¬ (a ≠ b)) : a = b
-:= (not_neq a b) ◂ H
+theorem not_ne_elim {A : (Type U)} {a b : A} (H : ¬ (a ≠ b)) : a = b
+:= (not_ne a b) ◂ H
 
 theorem not_not_elim {a : Bool} (H : ¬ ¬ a) : a
 := (not_not_eq a) ◂ H
@@ -304,8 +301,8 @@ theorem eqf_intro {a : Bool} (H : ¬ a) : a = false
 theorem by_contradiction {a : Bool} (H : ¬ a → false) : a
 := or_elim (em a) (λ H1 : a, H1) (λ H1 : ¬ a, false_elim a (H H1))
 
-theorem a_neq_a {A : (Type U)} (a : A) : (a ≠ a) ↔ false
-:= boolext (assume H, neq_irrefl H)
+theorem ne_id {A : (Type U)} (a : A) : (a ≠ a) ↔ false
+:= boolext (assume H, ne_irrefl H)
            (assume H, false_elim (a ≠ a) H)
 
 theorem eq_id {A : (Type U)} (a : A) : (a = a) ↔ true
@@ -317,13 +314,13 @@ theorem iff_id (a : Bool) : (a ↔ a) ↔ true
 theorem heq_id (A : (Type U+1)) (a : A) : (a == a) ↔ true
 := eqt_intro (hrefl a)
 
-theorem neq_eq_iff_false {A : (Type U)} {a b : A} (H : a ≠ b) : a = b ↔ false
+theorem ne_eq_iff_false {A : (Type U)} {a b : A} (H : a ≠ b) : a = b ↔ false
 := eqf_intro H
 
-theorem neq_to_not_eq {A : (Type U)} {a b : A} : a ≠ b ↔ ¬ a = b
+theorem ne_to_not_eq {A : (Type U)} {a b : A} : a ≠ b ↔ ¬ a = b
 := refl (a ≠ b)
 
-add_rewrite eq_id iff_id neq_to_not_eq
+add_rewrite eq_id iff_id ne_to_not_eq
 
 -- Remark: ordered rewriting + assoc + comm + left_comm sorts a term lexicographically
 theorem left_comm {A : (Type U)} {R : A -> A -> A} (comm : ∀ x y, R x y = R y x) (assoc : ∀ x y z, R (R x y) z = R x (R y z)) :
@@ -379,6 +376,12 @@ theorem or_tauto (a : Bool) : a ∨ ¬ a ↔ true
 
 theorem or_left_comm (a b c : Bool) : a ∨ (b ∨ c) ↔ b ∨ (a ∨ c) --suggestion: rename to or_comm_left
 := left_comm or_comm or_assoc a b c
+
+theorem or_imp_or {a b c d : Bool} (H1 : a ∨ b) (H2 : a → c) (H3 : b → d) : c ∨ d
+:=
+  or_elim H1
+    (assume Ha : a, or_intro_left d (H2 Ha))
+    (assume Hb : b, or_intro_right c (H3 Hb))
 
 add_rewrite or_comm or_assoc or_id or_false_left or_false_right or_true_left or_true_right or_tauto or_left_comm
 
@@ -904,14 +907,14 @@ theorem if_false {A : (Type U)} (a b : A) : (if false then a else b) = b
                             ...  = ε (inhabited_intro a) (λ r, r = b)              : by simp
                             ...  = b                                              : eps_singleton (inhabited_intro a) b
 
-theorem if_a_a {A : (Type U)} (c : Bool) (a: A) : (if c then a else a) = a
+theorem if_same {A : (Type U)} (c : Bool) (a: A) : (if c then a else a) = a
 := or_elim (em c)
      (λ H : c,   calc (if c then a else a) = (if true then a else a)  : { eqt_intro H }
                                    ...   = a                          : if_true a a)
      (λ H : ¬ c, calc (if c then a else a) = (if false then a else a) : { eqf_intro H }
                                     ...  = a                          : if_false a a)
 
-add_rewrite if_true if_false if_a_a
+add_rewrite if_true if_false if_same
 
 theorem if_congr {A : (Type U)} {b c : Bool} {x y u v : A} (H_bc : b = c)
                  (H_xu : ∀ (H_c : c), x = u) (H_yv : ∀ (H_nc : ¬ c), y = v) :

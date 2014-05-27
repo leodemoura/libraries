@@ -51,10 +51,10 @@ theorem zero_or_succ (n:nat) : n = zero ∨ n = succ (pred n)
   induction_on n
     (or_intro_left _ (refl zero))
     (take m IH, or_intro_right _
-      (show s m = s (pred (s m)), from congr2 s (symm (pred_succ m))))
+      (show succ m = succ (pred (succ m)), from congr2 succ (symm (pred_succ m))))
 
 theorem zero_or_succ2 (n:nat) : n = zero ∨ ∃k, n = succ k
-:= or_elim (zero_or_succ n) (take H, or_intro_left _ H) (take H, or_intro_right _ (exists_intro (pred n) H))
+:= or_imp_or (zero_or_succ n) (assume H, H) (assume H : n = succ (pred n), exists_intro (pred n) H)
 
 theorem nat_discriminate {B : Bool} {n : nat} (H1: n = zero → B) (H2 : ∀ m, n = succ m → B) : B
 :=
@@ -72,9 +72,41 @@ theorem succ_ne_self (n:nat) : succ n ≠ n
 :=
   not_intro (induction_on n
     (take H : succ zero = zero,
-      have neq : succ zero ≠ zero, from succ_ne_zero zero,
-      absurd H neq)
+      have ne : succ zero ≠ zero, from succ_ne_zero zero,
+      absurd H ne)
     (take k IH H, IH (succ_inj H)))
+
+theorem decidable_equality (n m : nat) : n = m ∨ n ≠ m
+:=
+  have general : ∀n, n = m ∨ n ≠ m, from
+    induction_on m
+      (take n : nat,
+        nat_discriminate
+          (assume H : n = zero, or_intro_left _ H)
+          (take l : nat,
+            assume H : n = succ l,
+            have H2 : n ≠ zero, from subst (succ_ne_zero l) (symm H),
+            or_intro_right _ H2))
+      (take k : nat,
+        assume IH : ∀n, n = k ∨ n ≠ k,
+        take n : nat,
+        nat_discriminate
+          (assume H : n = zero,
+            have H2 : n ≠ succ k, from subst (ne_symm (succ_ne_zero k)) (symm H),
+            or_intro_right _ H2)
+          (take l : nat,
+            assume H : n = succ l,
+            or_imp_or (IH l)
+              (take H2 : l = k,
+                show n = succ k, from trans H (congr2 succ H2))
+              (take H2 : l ≠ k,
+                show n ≠ succ k, from
+                  not_intro
+                    (take H4 : n = succ k,
+                      have H5 : succ l = succ k, from trans (symm H) H4,
+                      have H6 : l = k, from succ_inj H5,
+                      absurd H6 H2)))),
+    general n
 
 -------------------------------------------------- add
 
@@ -88,11 +120,13 @@ theorem add_succ_right (n m:nat) : n + succ m = succ (n + m)
 
 set_opaque add true
 
+---------- comm, assoc
+
 theorem add_zero_left (n:nat) : zero + n = n
 :=
   induction_on n
     (add_zero_right zero)
-    (take m IH, show zero + s m = s m, from
+    (take m IH, show zero + succ m = succ m, from
       calc
         zero + succ m = succ (zero + m) : add_succ_right _ _
    	    ... = succ m : {IH})
@@ -150,6 +184,8 @@ theorem add_comm_left (n m k : nat) : n + (m + k) = m + (n + k)
 theorem add_comm_right (n m k : nat) : n + m + k = n + k + m
 := right_comm add_comm add_assoc n m k
 
+---------- inversion
+
 theorem add_left_inj {n m k : nat} : n + m = n + k → m = k
 :=
   induction_on n
@@ -194,6 +230,8 @@ theorem add_eq_zero_right {n m : nat} (H : n + m = zero) : m = zero
 
 theorem add_eq_zero {n m : nat} (H : n + m = zero) : n = zero ∧ m = zero
 := and_intro (add_eq_zero_left H) (add_eq_zero_right H)
+
+---------- misc
 
 theorem add_one (n:nat) : n + succ zero = succ n
 :=
@@ -241,6 +279,8 @@ theorem mul_succ_right (n m:nat) : n * succ m = n * m + n
 := nat_rec_succ _ _ _
 
 set_opaque mul true
+
+---------- comm, distr, assoc, identity
 
 theorem mul_zero_left (n:nat) : zero * n = zero
 :=
@@ -340,6 +380,8 @@ theorem mul_one_left (n : nat) : succ zero * n = n
   calc
     succ zero * n = n * succ zero : mul_comm _ _
       ... = n : mul_one_right n
+
+---------- inversion
 
 theorem mul_eq_zero {n m : nat} (H : n * m = zero) : n = zero ∨ m = zero
 :=
@@ -460,6 +502,8 @@ theorem le_elim {n m : nat} (H : n ≤ m) : ∃ k, n + k = m
 
 set_opaque le true
 
+---------- partial order (totality is part of lt)
+
 theorem le_intro2 (n m : nat) : n ≤ n + m
 := le_intro (refl (n + m))
 
@@ -501,6 +545,8 @@ theorem le_antisym {n m : nat} (H1 : n ≤ m) (H2 : m ≤ n) : n = m
         ... = n  + k : { symm L2 }
         ... = m : Hk
 
+---------- interaction with add
+
 theorem add_le_left {n m : nat} (H : n ≤ m) (k : nat) : k + n ≤ k + m
 :=
   obtain (l : nat) (Hl : n + l = m), from (le_elim H),
@@ -525,6 +571,8 @@ theorem add_le_left_inv {n m k : nat} (H : k + n ≤ k + m) : n ≤ m
 
 theorem add_le_right_inv {n m k : nat} (H : n + k ≤ m + k) : n ≤ m
 := add_le_left_inv (subst (subst H (add_comm n k)) (add_comm m k))
+
+---------- interaction with succ
 
 theorem succ_le {n m : nat} (H : n ≤ m) : succ n ≤ succ m
 := subst (subst (add_le_right H (succ zero)) (add_one n)) (add_one m)
@@ -599,6 +647,8 @@ theorem succ_le_left_inv {n m : nat} (H : succ n ≤ m) : n ≤ m ∧ n ≠ m
         have H5 : succ n = n, from le_antisym H4 (le_self_succ n),
         show false, from absurd H5 (succ_ne_self n)))
 
+---------- interaction with mul
+
 theorem mul_le_left {n m : nat} (H : n ≤ m) (k : nat) : k * n ≤ k * m
 :=
   obtain (l : nat) (Hl : n + l = m), from (le_elim H),
@@ -657,17 +707,10 @@ theorem mul_le_right_inv {n m k : nat} (H : n * succ m ≤ k * succ m) : n ≤ k
 := mul_le_left_inv (subst (subst H (mul_comm n (succ m))) (mul_comm k (succ m)))
 
 
--------------------------------------------------- lt ge gt
-
-definition ge (n m : nat) := m ≤ n
-infix 50 >= : ge
-infix 50 ≥  : ge
+-------------------------------------------------- lt
 
 definition lt (n m : nat) := succ n ≤ m
 infix 50 <  : lt
-
-definition gt (n m : nat) := m < n
-infix 50 >  : gt
 
 theorem lt_intro {n m k : nat} (H : succ n + k = m) : n < m
 := le_intro H
@@ -677,6 +720,8 @@ theorem lt_elim {n m : nat} (H : n < m) : ∃ k, succ n + k = m
 
 theorem lt_intro2 (n m : nat) : n < n + succ m
 := lt_intro (add_move_succ n m)
+
+---------- basic facts
 
 theorem lt_ne {n m : nat} (H : n < m) : n ≠ m
 := and_elim_right (succ_le_left_inv H)
@@ -694,7 +739,18 @@ theorem lt_zero_inv (n : nat) : ¬ n < zero
       have H2 : succ n = zero, from le_zero_inv H,
       absurd H2 (succ_ne_zero n))
 
+theorem lt_exists {n m : nat} (H : n < m) : exists k, m = succ k
+:=
+  nat_discriminate
+    (take (Hm : m = zero), absurd_elim _ (subst H Hm) (lt_zero_inv n))
+    (take (l : nat) (Hm : m = succ l), exists_intro l Hm)
+
+---------- interaction with le
+
 theorem lt_le_succ {n m : nat} (H : n < m) : succ n ≤ m
+:= H
+
+theorem le_succ_lt {n m : nat} (H : succ n ≤ m) : n < m
 := H
 
 theorem lt_le {n m : nat} (H : n < m) : n ≤ m
@@ -706,72 +762,30 @@ theorem le_lt_or {n m : nat} (H : n ≤ m) : n < m ∨ n = m
 theorem le_lt {n m : nat} (H1 : n ≤ m)  (H2 : n ≠ m) : n < m
 := resolve_left (le_lt_or H1) H2
 
-theorem le_lt_succ {n m : nat} (H1 : n ≤ m) : n < succ m
-:= succ_le H1
+theorem le_lt_succ {n m : nat} (H : n ≤ m) : n < succ m
+:= succ_le H
+
+theorem lt_succ_le {n m : nat} (H : n < succ m) : n ≤ m
+:= succ_le_inv H
+
+---------- trans, antisym
 
 theorem lt_le_trans {n m k : nat} (H1 : n < m) (H2 : m ≤ k) : n < k
-:=
-  obtain (l1 : nat) (Hl1 : succ n + l1 = m), from lt_elim H1,
-  obtain (l2 : nat) (Hl2 : m + l2 = k), from le_elim H2,
-  lt_intro
-    (calc
-      succ n + (l1 + l2) =  succ n + l1 + l2 : symm (add_assoc _ _ _)
-        ... = m + l2 : { Hl1 }
-        ... = k : Hl2)
+:= le_trans H1 H2
 
 theorem lt_trans {n m k : nat} (H1 : n < m) (H2 : m < k) : n < k
 := lt_le_trans H1 (lt_le H2)
 
+theorem le_lt_trans {n m k : nat} (H1 : n ≤ m) (H2 : m < k) : n < k
+:= le_trans (succ_le H1) H2
+
 theorem lt_antisym {n m : nat} (H1 : n < m) (H2 : m < n) : false
 := absurd (lt_trans H1 H2) (lt_irrefl n)
 
-theorem le_lt_trans {n m k : nat} (H1 : n ≤ m) (H2 : m < k) : n < k
-:=
-  obtain (l1 : nat) (Hl1 : n + l1 = m), from le_elim H1,
-  obtain (l2 : nat) (Hl2 : succ m + l2 = k), from lt_elim H2,
-  lt_intro
-    (calc
-      succ n + (l1 + l2) = succ (n + (l1 + l2)) : add_succ_left _ _
-        ... = succ (n + l1 + l2) : {symm (add_assoc _ _ _)}
-        ... = succ (m + l2) : { Hl1 }
-        ... = succ m + l2 : symm (add_succ_left m l2)
-        ... = k : Hl2)
-check @or_elim
-
-axiom le_or_lt (n m : nat) : n ≤ m ∨ m < n
--- :=
---   induction_on n
---     (or_intro_left _ (le_zero m))
---     (take (k : nat),
---       assume IH : k ≤ m ∨ m < k,
---       or_elim IH
---         (assume H : k ≤ m, _)
---         (assume H : m < k, _))
-
-axiom trichotomy (n m : nat) : n < m ∨ n = m ∨ m < n
---:=
---_
---   induction_on n
---     (nat_discriminate
---       (assume (H : m = zero), or_intro_right _ (or_intro_left _ (symm H)))
---       (take (l : nat),
---         assume (H : m = succ l),
---         have H2 : n < m, from subst (lt_zero l) (symm H),
---         or_intro_left _ H2))
---     (take (k : nat),
---       assume IH : k < m ∨ k = m ∨ m < k
-
--- )
-
-axiom le_total (n m : nat) : n ≤ m ∨ m ≤ n
-
-check @subst
+---------- interaction with add
 
 theorem add_lt_left {n m : nat} (H : n < m) (k : nat) : k + n < k + m
-:=
- @subst _ _ _ (fun x, x ≤ k + m) (add_le_left H k) (add_succ_right k n)
---subst (subst (add_le_left H k) (add_succ_right k n)) (refl _)
--- subst (add_le_left H k) (add_succ_right k n)
+:= @subst _ _ _ (fun x, x ≤ k + m) (add_le_left H k) (add_succ_right k n)
 
 theorem add_lt_right {n m : nat} (H : n < m) (k : nat) : n + k < m + k
 := subst (subst (add_lt_left H k) (add_comm k n)) (add_comm k m)
@@ -786,16 +800,12 @@ theorem add_lt {n m k l : nat} (H1 : n < k) (H2 : m < l) : n + m < k + l
 := add_lt_le H1 (lt_le H2)
 
 theorem add_lt_left_inv {n m k : nat} (H : k + n < k + m) : n < m
-:=
-  obtain (l : nat) (Hl : succ (k + n) + l = k + m), from (lt_elim H),
-  lt_intro (add_left_inj
-    calc
-        k + (succ n + l)  = k + succ n + l : symm (add_assoc k (succ n) l)
-          ... = succ (k + n) + l : {add_succ_right k n}
-          ... = k + m : Hl )
+:= add_le_left_inv (subst H (symm (add_succ_right k n)))
 
 theorem add_lt_right_inv {n m k : nat} (H : n + k < m + k) : n < m
 := add_lt_left_inv (subst (subst H (add_comm n k)) (add_comm m k))
+
+---------- interaction with succ
 
 theorem succ_lt {n m : nat} (H : n < m) : succ n < succ m
 := subst (subst (add_lt_right H (succ zero)) (add_one n)) (add_one m)
@@ -803,23 +813,75 @@ theorem succ_lt {n m : nat} (H : n < m) : succ n < succ m
 theorem succ_lt_inv {n m : nat} (H : succ n < succ m) :  n < m
 := add_lt_right_inv (subst (subst H (symm (add_one n))) (symm (add_one m)))
 
-theorem lt_self_succ {n : nat} : n < succ n
-:= lt_intro (add_zero_right (succ n))
+theorem lt_self_succ (n : nat) : n < succ n
+:= le_refl (succ n)
+
+theorem succ_lt_right {n m : nat} (H : n < m) : n < succ m
+:= lt_trans H (lt_self_succ m)
+
+---------- totality of lt and le
+
+theorem le_or_lt (n m : nat) : n ≤ m ∨ m < n
+:=
+  induction_on n
+    (or_intro_left _ (le_zero m))
+    (take (k : nat),
+      assume IH : k ≤ m ∨ m < k,
+      or_elim IH
+        (assume H : k ≤ m,
+          obtain (l : nat) (Hl : k + l = m), from le_elim H,
+          nat_discriminate
+            (assume H2 : l = zero,
+              have H3 : m = k,
+                from calc
+                  m = k + l : symm Hl
+                    ... = k + zero : {H2}
+                    ... = k : add_zero_right k,
+              have H4 : m < succ k, from subst (lt_self_succ m) H3,
+              or_intro_right _ H4)
+            (take l2 : nat,
+              assume H2 : l = succ l2,
+              have H3 : succ k + l2 = m,
+                from calc
+                  succ k + l2 = k + succ l2 : add_move_succ k l2
+                    ... = k + l : {symm H2}
+                    ... = m : Hl,
+              or_intro_left _ (le_intro H3)))
+        (assume H : m < k, or_intro_right _ (succ_lt_right H)))
+
+theorem trichotomy (n m : nat) : (n < m ∨ n = m) ∨ m < n
+:= or_imp_or (le_or_lt n m) (assume H : n ≤ m, le_lt_or H) (assume H : m < n, H)
+
+theorem le_total (n m : nat) : n ≤ m ∨ m ≤ n
+:= or_imp_or (le_or_lt n m) (assume H : n ≤ m, H) (assume H : m < n, lt_le H)
+
+
+---------- interaction with mul
 
 theorem mul_lt_left {n m : nat} (H : n < m) (k : nat) : succ k * n < succ k * m
 :=
-  induction_on k
-    (subst (subst H (symm (mul_one_left n))) (symm (mul_one_left m)))
-    (take (l:nat) (IH : succ l * n < succ l * m),
-    have H2 : succ l * n + n < succ l * m + m, from add_lt IH H,
-      subst (subst H2 (symm (mul_succ_left (succ l) n))) (symm (mul_succ_left (succ l) m)))
+  lt_le_trans
+    (show succ k * n < succ k * n + succ k, from lt_intro2 _ _)
+    (show succ k * n + succ k ≤ succ k * m,
+      from subst (mul_le_left H (succ k)) (mul_succ_right (succ k) n))
 
 theorem mul_lt_right {n m : nat} (H : n < m) (k : nat) : n * succ k < m * succ k
 := subst (subst (mul_lt_left H k) (mul_comm (succ k) n)) (mul_comm (succ k) m)
 
-axiom mul_lt {n m k l : nat} (H1 : n < k) (H2 : m < l) : n * m < k * l
---:= le_trans (mul_le_right H1 m) (mul_le_left H2 k)
+theorem mul_le_lt {n m k l : nat} (H1 : n ≤ succ k) (H2 : m < l) : n * m < succ k * l
+:= le_lt_trans (mul_le_right H1 m) (mul_lt_left H2 k)
 
+theorem mul_lt_le {n m k l : nat} (H1 : n < k) (H2 : m ≤ succ l) : n * m < k * succ l
+:= le_lt_trans (mul_le_left H2 n) (mul_lt_right H1 l)
+
+theorem mul_lt {n m k l : nat} (H1 : n < k) (H2 : m < l) : n * m < k * l
+:=
+  obtain (k2 : nat) (Hk : k = succ k2), from lt_exists H1,
+  have H3 : n * m ≤ k * m, from mul_le_right (lt_le H1) m,
+  have H4 : k * m < k * l, from subst (mul_lt_left H2 k2) (symm Hk),
+  le_lt_trans H3 H4
+
+-- move mul_le_left_inv below this?
 axiom mul_lt_left_inv {n m k : nat} (H : k * n < k * m) : n < m
 -- :=
 --   obtain (l : nat) (Hl : k + n + l = k + m), from (le_elim H),
@@ -831,22 +893,7 @@ axiom mul_lt_left_inv {n m k : nat} (H : k * n < k * m) : n < m
 theorem mul_lt_right_inv {n m k : nat} (H : n * k < m * k) : n < m
 := mul_lt_left_inv (subst (subst H (mul_comm n k)) (mul_comm m k))
 
-
-axiom ne_lt_succ {n m : nat} (H1 : n ≠ m) (H2 : n < succ m) : n < m
--- := obtain (w : nat) (Hw : n + 1 + w = m + 1), from (lt_elim H2),
---      let L : n + w = m := add_left_inj (calc n + w + 1  =  n + (w + 1)  : add_assoc _ _ _
---                                                 ... =  n + (1 + w)  : { add_comm _ _ }
---                                                 ... =  n + 1 + w    : symm (add_assoc _ _ _)
---                                                 ... =  m + 1        : Hw)
---      in nat_discriminate (λ Hz : w = 0, absurd_elim (n < m) (calc n   = n + 0  : symm (add_zero_right _)
---                                                               ... = n + w  : { symm Hz }
---                                                               ... = m      : L)
---                                                          H1)
---                      (λ (p : nat) (Hp : w = p + 1), lt_intro (calc n + 1 + p =  n + (1 + p)   : add_assoc _ _ _
---                                                                         ...  =  n + (p + 1)   : { add_comm _ _ }
---                                                                         ...  =  n + w         : { symm Hp }
---                                                                         ...  =  m             : L))
-
+-- stronger : ∀m, m ≤ n → P n
 axiom strong_induction {P : nat → Bool} (H : ∀ n, (∀ m, m < n → P m) → P n) : ∀ n, P n
 -- := take n,
 --     let stronger : P n ∧ ∀ m, m < n → P m :=
@@ -868,7 +915,18 @@ axiom strong_induction {P : nat → Bool} (H : ∀ n, (∀ m, m < n → P m) →
 --               in and_intro c1 c2)
 --     in and_eliml stronger
 
-
 set_opaque lt true
+
+-------------------------------------------------- ge, gt
+
+definition ge (n m : nat) := m ≤ n
+infix 50 >= : ge
+infix 50 ≥  : ge
+
+definition gt (n m : nat) := m < n
+infix 50 >  : gt
+
+
+--------------------------------------------------
 
 end --namespace nat
