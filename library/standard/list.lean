@@ -140,3 +140,6 @@ theorem reverse_reverse {T : Type} (t : list T) : reverse (reverse t) = t
           ... = cons x l : {nil_concat _} 
   ) t
 
+
+definition head {T : Type} (null : T) : list T → T 
+:= list_rec null (fun x l h, x)
