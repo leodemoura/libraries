@@ -1157,12 +1157,6 @@ theorem mul_minus_distr_right (n m k : nat) : n * (m - k) = n * m - n * k
       ... = n * m - k * n : {mul_comm _ _}
       ... = n * m - n * k : {mul_comm _ _}
 
--- lemma diff_mult_distrib: ""
--- by (induct m n rule: diff_induct) (simp_all add: diff_cancel)
-
--- lemma diff_mult_distrib2: "k * ((m::nat) - n) = (k * m) - (k * n)"
--- by (simp add: diff_mult_distrib mult_commute [of k])
-
 -------------------------------------------------- max, min, iteration, maybe: minus, div
 -- n - m + m = max n m
 end --namespace nat
