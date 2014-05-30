@@ -788,8 +788,14 @@ theorem lt_trans {n m k : nat} (H1 : n < m) (H2 : m < k) : n < k
 theorem le_lt_trans {n m k : nat} (H1 : n ≤ m) (H2 : m < k) : n < k
 := le_trans (succ_le H1) H2
 
+theorem le_lt_antisym {n m : nat} (H : n ≤ m) : ¬ m < n
+:= not_intro (take H2 : m < n, absurd (le_lt_trans H H2) (lt_irrefl n))
+
+theorem lt_le_antisym {n m : nat} (H : n < m) : ¬ m ≤ n
+:= not_intro (take H2 : m ≤ n, absurd (lt_le_trans H H2) (lt_irrefl n))
+
 theorem lt_antisym {n m : nat} (H : n < m) : ¬ m < n
-:= not_intro (take H2 : m < n, absurd (lt_trans H H2) (lt_irrefl n))
+:= le_lt_antisym (lt_le H)
 
 ---------- interaction with add
 
