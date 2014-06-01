@@ -88,7 +88,12 @@ theorem neg_inj {n m:nat} (H : neg n = neg m) : n = m
   ... = pred (succ m) : {abs_neg m}
   ... = m : pred_succ m
 
--------------------------------------------------- add
+-------------------------------------------------- add minus
+
+definition nat_int_minus (n m : nat) : int := if (n ≥ m) then n - m else neg (pred (m - n))
+infixl 65 @ : nat_int_minus
+
+check (zero-zero)
 
 -- definition add (z w : int) : int :=
 --   int_rec
@@ -156,44 +161,9 @@ check @induction
 
 theorem addz_comm (z w : int) : z + w = w + z
 :=
-  have lemma : ∀n m, pos n + neg m = neg m + pos n,
-    from take n m,
-      or_elim (le_or_lt n m)
-        (take H : n ≤ m, calc
-          pos n + neg m = neg (m - n) : addz_pos_le_neg H
-            ... = neg m + pos n : symm (addz_neg_ge_pos H))
-        (take H : m < n, calc
-          pos n + neg m = pos (n - succ m) : addz_pos_gt_neg H
-            ... = neg m + pos n : symm (addz_neg_lt_pos H)),
---uncomment the next line and the compilation will hang
---  induction z  _
+  induction z  _
     _
 
-
-
--- theorem addz_comm (z w : int) : z + w = w + z
--- :=
---   have lemma : ∀n m, pos n + neg m = neg m + pos n,
-    -- from take n m,
-    --   or_elim (le_or_lt n m)
-    --     _ _, --(take H : n ≤ m, calc
-    --       --pos n + neg m = neg (m - n) : addz_pos_le_neg H
-    --       --  ... = neg m + pos n : symm (addz_neg_ge_pos H))
-    --    -- (take H : m < n, calc
-    --     --  pos n + neg m = pos (n - succ m) : addz_pos_gt_neg H
-    --       --  ... = neg m + pos n : symm (addz_neg_lt_pos H)),
-
---   induction z
---     (take n, induction w
---       (take m, _)
---       (take m, _))
---     (take n, induction w
---       (take m, _ --symm (lemma m n)
--- )
---       (take m, _))--calc
---         --neg n + neg m = neg (succ (n + m)) : addz_neg_neg n m
---         --  ... = neg (succ (m + n)) : {add_comm n m}
---         --  ... = neg m + neg n : symm (addz_neg_neg m n)))
 
 -- theorem error (z w : int) : z + w = w + z
 -- :=
@@ -220,6 +190,7 @@ theorem addz_comm (z w : int) : z + w = w + z
 --           ... = neg (succ (m + n)) : {add_comm n m}
 --           ... = neg m + neg n : symm (addz_neg_neg m n)))
 --------------------------------------------------
+
 
 
 end -- namespace int
