@@ -45,18 +45,10 @@ theorem divmod_zero_succ (y : ℕ) : divmod 0 (succ y) = pair 0 0
 
 theorem divmod_succ_succ (x y : ℕ) : divmod (succ x) (succ y) = divmod_aux' y (divmod x (succ y))  
 :=
-  have H : divmod (succ x) (succ y) = divmod_aux y (succ x), from divmod_succ _ _,
-  have H1 : divmod_aux y (succ x) = divmod_aux' y (divmod_aux y x), from divmod_aux_succ _ _,
-  have H2 : divmod_aux' y (divmod_aux y x) = divmod_aux' y (divmod x (succ y)), 
-    from subst (refl _) (symm (divmod_succ x y)),
-  trans (trans H H1) H2
-
--- strange! What doesn't calc work here?
---
---  calc
---     divmod (succ x) (succ y) = divmod_aux y (succ x) : divmod_succ _ _,
---     ... = divmod_aux' y (divmod_aux y x) : divmod_aux_succ _ _,
---     ... = divmod_aux' y (divmod x (succ y)) : {symm (divmod_succ x y)}
+  calc
+     divmod (succ x) (succ y) = divmod_aux y (succ x) : divmod_succ _ _
+     ... = divmod_aux' y (divmod_aux y x) : divmod_aux_succ _ _
+     ... = divmod_aux' y (divmod x (succ y)) : {symm (divmod_succ x y)}
 
 definition idivide x y := proj1 (divmod x y)
 
