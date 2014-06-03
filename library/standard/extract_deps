@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-EXCEPT="macros tactic"
+LEAN=lean
 
 for LEANFILE in $@
 do
   OLEANFILE=${LEANFILE//.lean/.olean}
-  DEPS=`grep "^import " $LEANFILE | cut -d ' ' -f 2- | tr "\n" " "`
+  DEPS=`$LEAN -n --deps $LEANFILE | cut -d ' ' -f 2- | tr "\n" " "`
   echo -n "$OLEANFILE:"
   for DEP in $DEPS
   do
-    [[ ! $EXCEPT =~ $DEP ]] && echo -n " ${DEP}.olean"
+    [[ ! $EXCEPT =~ $DEP ]] && echo -n " ${DEP}"
   done
   echo ""
 done
