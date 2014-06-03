@@ -8,10 +8,13 @@ all: $(OLEAN_FILES) $(DEPS)
 %.olean: %.lean
 	$(LEAN) $< -n -o $@
 
+%.olean: %.lua
+	$(LEAN) $< -n -o $@
+
 clean:
 	-rm *.olean $(DEPS)
 
 $(DEPS): $(LEAN_FILES)
-	./extract_deps $(LEAN_FILES) > make.deps
+	LEAN=$(LEAN) ./extract_deps $(LEAN_FILES) > make.deps
 
 include $(DEPS)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-LEAN=lean
+LEAN=${LEAN-lean}
 
 for LEANFILE in $@
 do
