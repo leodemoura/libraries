@@ -144,7 +144,7 @@ theorem add_comm (a b : int) : a + b = b + a
            ... = neg (succ (m + n)) : {add_comm n m}
            ... = neg m + neg n : symm (add_neg_neg m n)))
 
-theorem add_assoc (a b c : int) : a + b + c = a + (b + c)
-:= _
+-- theorem add_assoc (a b c : int) : a + b + c = a + (b + c)
+-- := _
 
 end -- namespace int

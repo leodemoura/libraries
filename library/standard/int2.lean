@@ -159,10 +159,10 @@ theorem addz_neg_ge_pos {n m : nat} (H : n ≥ m) : neg n + pos m = neg (n - m)
 
 check @induction
 
-theorem addz_comm (z w : int) : z + w = w + z
-:=
-  induction z  _
-    _
+--theorem addz_comm (z w : int) : z + w = w + z
+--:=
+--  induction z  _
+--    _
 
 
 -- theorem error (z w : int) : z + w = w + z
