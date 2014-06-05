@@ -17,32 +17,19 @@ using nat
 
 unary_nat
 
-
---
--- some stuff for nat
---
-
-add_rewrite add_zero_left add_zero_right
-add_rewrite mul_zero_left mul_zero_right
-
--- add to nat, and variations
-theorem not_lt_imp_le {x y : ℕ} (H : ¬ x < y) : y ≤ x
-:= resolve_left (le_or_lt _ _) H
-
-
 --
 -- div and mod
 --
 
--- computes (succ x) divmod (succ y) from x divmod y  
-definition divmod_aux' (y : ℕ) (p : ℕ ## ℕ) : ℕ ## ℕ 
-:= 
+-- computes (succ x) divmod (succ y) from x divmod y
+definition divmod_aux' (y : ℕ) (p : ℕ ## ℕ) : ℕ ## ℕ
+:=
   let q := tproj1 p,    --  q = x div (succ y)
     r := tproj2 p in    --  r = x mod (succ y)
   if r < y then tpair q (succ r) else tpair (succ q) 0
 
 -- computes x divmod (succ y)
-definition divmod_aux (y : ℕ) : ℕ → ℕ ## ℕ 
+definition divmod_aux (y : ℕ) : ℕ → ℕ ## ℕ
 := nat_rec (tpair 0 0) (fun x' p, divmod_aux' y p)
 
 theorem divmod_aux_zero (y : ℕ) : divmod_aux y 0 = tpair 0 0
@@ -60,10 +47,10 @@ theorem divmod_zero (x : ℕ) : divmod x 0 = tpair 0 x
 theorem divmod_succ (x y : ℕ) : divmod x (succ y) = divmod_aux y x
 := nat_rec_succ _ _ _
 
-theorem divmod_zero_succ (y : ℕ) : divmod 0 (succ y) = tpair 0 0 
+theorem divmod_zero_succ (y : ℕ) : divmod 0 (succ y) = tpair 0 0
 := trans (divmod_succ _ _) (divmod_aux_zero _)
 
-theorem divmod_succ_succ (x y : ℕ) : divmod (succ x) (succ y) = divmod_aux' y (divmod x (succ y))  
+theorem divmod_succ_succ (x y : ℕ) : divmod (succ x) (succ y) = divmod_aux' y (divmod x (succ y))
 :=
   calc
     divmod (succ x) (succ y) = divmod_aux y (succ x) : divmod_succ _ _
@@ -74,7 +61,7 @@ definition idivide x y := tproj1 (divmod x y)
 definition modulo x y := tproj2 (divmod x y)
 
 infixl 70 div : idivide    -- copied from Isabelle
-infixl 70 mod : modulo 
+infixl 70 mod : modulo
 
 theorem div_zero (x : ℕ) : x div 0 = 0
 := trans (congr2 tproj1 (divmod_zero _)) (tproj1_tpair _ _)
@@ -82,30 +69,30 @@ theorem div_zero (x : ℕ) : x div 0 = 0
 theorem mod_zero (x : ℕ) : x mod 0 = x
 := trans (congr2 tproj2 (divmod_zero _)) (tproj2_tpair _ _)
 
-theorem zero_div (y : ℕ) : 0 div y = 0 
+theorem zero_div (y : ℕ) : 0 div y = 0
 := nat_case y (div_zero 0) (take y', trans (congr2 tproj1 (divmod_zero_succ _)) (tproj1_tpair _ _))
 
-theorem zero_mod (y : ℕ) : 0 mod y = 0 
+theorem zero_mod (y : ℕ) : 0 mod y = 0
 := nat_case y (mod_zero 0) (take y', trans (congr2 tproj2 (divmod_zero_succ _)) (tproj2_tpair _ _))
 
-theorem div_succ_succ (x y : ℕ) : (succ x) div (succ y) = 
+theorem div_succ_succ (x y : ℕ) : (succ x) div (succ y) =
     if (x mod (succ y) < y) then x div (succ y) else succ (x div (succ y))
 :=
   let p := divmod x (succ y), q := tproj1 p, r := tproj2 p in
   calc
     (succ x) div (succ y) = tproj1 (divmod_aux' y (divmod x (succ y))) : {divmod_succ_succ x y}
-      ... = if r < y then tproj1 (tpair q (succ r)) else tproj1 (tpair (succ q) 0) : 
+      ... = if r < y then tproj1 (tpair q (succ r)) else tproj1 (tpair (succ q) 0) :
           app_if_distribute _ _ _ _
       ... = if r < y then q else succ q : by simp
       ... = if (x mod (succ y) < y) then x div (succ y) else succ (x div (succ y)) : refl _
 
-theorem mod_succ_succ (x y : ℕ) : (succ x) mod (succ y) = 
+theorem mod_succ_succ (x y : ℕ) : (succ x) mod (succ y) =
     if (x mod (succ y) < y) then succ (x mod (succ y)) else 0
 :=
   let p := divmod x (succ y), q := tproj1 p, r := tproj2 p in
   calc
     (succ x) mod (succ y) = tproj2 (divmod_aux' y (divmod x (succ y))) : {divmod_succ_succ x y}
-      ... = if r < y then tproj2 (tpair q (succ r)) else tproj2 (tpair (succ q) 0) : 
+      ... = if r < y then tproj2 (tpair q (succ r)) else tproj2 (tpair (succ q) 0) :
           app_if_distribute _ _ _ _
       ... = if r < y then succ r else 0 : by simp
       ... = if (x mod (succ y) < y) then succ (x mod (succ y)) else 0 : refl _
@@ -118,7 +105,7 @@ theorem mod_lt (x y : ℕ) (H : y > 0) : x mod y < y
   have H2 : x mod succ y' < succ y', from
     induction_on x
       (subst (lt_zero y') (symm (zero_mod (succ y'))))
-      (take x', 
+      (take x',
         let t1 := x' mod succ y' in
         let t2 := if t1 < y' then succ t1 else 0 in
         assume IH : t1 < succ y',
@@ -139,7 +126,7 @@ theorem mod_lt (x y : ℕ) (H : y > 0) : x mod y < y
 theorem div_mod_eq (x y : ℕ) : x = (x div y) * y + x mod y
 :=
   nat_case y
-    (show x = x div 0 * 0 + x mod 0, from 
+    (show x = x div 0 * 0 + x mod 0, from
       symm (calc
         x div 0 * 0 + x mod 0 = 0 + x mod 0 : {mul_zero_right _}
           ... = x mod 0 : add_zero_left _
@@ -158,7 +145,7 @@ theorem div_mod_eq (x y : ℕ) : x = (x div y) * y + x mod y
                   have H3 : succ x' mod succ y' = succ (x' mod (succ y')),
                     from (trans (mod_succ_succ _ _) (imp_if_eq H1 _ _)),
                   symm (calc
-                    (succ x' div succ y') * succ y' + succ x' mod succ y' = 
+                    (succ x' div succ y') * succ y' + succ x' mod succ y' =
                         (x' div succ y') * succ y' + succ x' mod succ y' : {H2}
                       ... = (x' div succ y') * succ y' + succ (x' mod succ y') : {H3}
                       ... = succ (x' div succ y' * succ y' + x' mod succ y') : add_succ_right _ _
@@ -173,11 +160,11 @@ theorem div_mod_eq (x y : ℕ) : x = (x div y) * y + x mod y
                       (show x' mod succ y' ≤ y', from lt_succ_le (mod_lt _ _ (lt_zero _)))
                       (show y' ≤ x' mod succ y', from not_lt_imp_le H1),
                   symm (calc
-                    (succ x' div succ y') * succ y' + succ x' mod succ y' = 
+                    (succ x' div succ y') * succ y' + succ x' mod succ y' =
                         succ (x' div succ y') * succ y' + succ x' mod succ y' : {H2}
                       ... = succ (x' div succ y') * succ y' + 0 : {H3}
                       ... = succ (x' div succ y') * succ y' : add_zero_right _
-                      ... = x' div succ y' * succ y' + succ y' : mul_succ_left _ _ 
+                      ... = x' div succ y' * succ y' + succ y' : mul_succ_left _ _
                       ... = succ (x' div succ y' * succ y' + y') : add_succ_right _ _
                       ... = succ (x' div succ y' * succ y' + x' mod succ y') : {symm H4}
                       ... = succ x' : {symm IH}))))

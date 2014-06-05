@@ -10,7 +10,7 @@ import macros
 
 variable nat : Type
 alias ℕ : nat
-unary_nat
+unary_nat -- enables numerals
 
 namespace nat
 
@@ -277,6 +277,8 @@ theorem induction_plus_one {P : nat → Bool} (a : nat) (H1 : P 0)
     (H2 : ∀ (n : nat) (IH : P n), P (n + 1)) : P a
 := nat_rec H1 (take n IH, subst (H2 n IH) (add_one n)) a
 
+add_rewrite add_zero_left add_zero_right
+
 -------------------------------------------------- mul
 
 definition mul (n m : nat) := nat_rec 0 (fun m x, x + n) m
@@ -411,6 +413,8 @@ theorem mul_eq_zero {n m : nat} (H : n * m = 0) : n = 0 ∨ m = 0
           absurd_elim _  (trans Heq H) (succ_ne_zero _)))
 
 -- see more under "positivity" below
+
+add_rewrite mul_zero_left mul_zero_right
 
 -------------------------------------------------- le
 
@@ -787,6 +791,12 @@ theorem trichotomy (n m : nat) : n < m ∨ n = m ∨ m < n
 theorem le_total (n m : nat) : n ≤ m ∨ m ≤ n
 := or_imp_or (le_or_lt n m) (assume H : n ≤ m, H) (assume H : m < n, lt_le H)
 
+theorem not_lt_imp_le {n m : ℕ} (H : ¬ n < m) : m ≤ n
+:= resolve_left (le_or_lt m n) H
+
+theorem not_le_imp_lt {n m : ℕ} (H : ¬ n ≤ m) : m < n
+:= resolve_right (le_or_lt n m) H
+
 -- interaction with mul under "positivity"
 
 theorem strong_induction {P : nat → Bool} (n : nat) (IH : ∀n, (∀m, m < n → P m) → P n) : P n
@@ -845,9 +855,11 @@ infix 50 >  : gt
 
 -------------------------------------------------- positivity
 
---  we use " _ > 0" as canonical way of denoting that a number is positive
+-- " _ > 0" is the preferred way to describe that a number is positive
 
 ---------- basic
+
+-- see also lt_zero
 
 theorem zero_or_positive (n : nat) : n = 0 ∨ n > 0
 := or_imp_or (or_flip (le_lt_or (le_zero n))) (take H : 0 = n, symm H) (take H : n > 0, H)
@@ -934,12 +946,6 @@ theorem mul_left_inj {n m k : nat} (Hn : n > 0) (H : n * m = n * k) : m = k
 
 theorem mul_right_inj {n m k : nat} (Hm : m > 0) (H : n * m = k * m) : n = k
 := mul_left_inj Hm (subst (subst H (mul_comm n m)) (mul_comm k m))
-  -- have H2 : m * n = m * k,
-  --   from calc
-  --     m * n = n * m : mul_comm  n
-  --       ... = k * m : H
-  --       ... = m * k : mul_comm k (succ m),
-  --   mul_left_inj H2
 
 -- mul_eq_one below
 
@@ -969,7 +975,6 @@ theorem mul_lt {n m k l : nat} (H1 : n < k) (H2 : m < l) : n * m < k * l
 
 theorem mul_lt_left_inv {n m k : nat} (H : k * n < k * m) : n < m
 :=
-
   have general : ∀ m, k * n < k * m → n < m, from
     induction_on n
       (take m : nat,
