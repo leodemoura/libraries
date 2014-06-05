@@ -19,67 +19,11 @@ unary_nat
 
 
 --
--- temporary definition of the product of two types
---
-
-definition tprod (A B : Type) := A ⨯ B
-definition tpair {A B : Type} (a : A) (b : B) : tprod A B := pair a b
-definition tproj1 {A B : Type} (p : tprod A B) := proj1 p
-definition tproj2 {A B : Type} (p : tprod A B) := proj2 p
-
-theorem tproj1_tpair {A B : Type} (a : A) (b : B) : tproj1 (tpair a b) = a
-:= refl _
-
-theorem tproj2_tpair {A B : Type} (a : A) (b : B) : tproj2 (tpair a b) = b
-:= refl _
-
-set_opaque tprod true
-set_opaque tpair true
-set_opaque tproj1 true
-set_opaque tproj2 true
-
-infix 60 ## : tprod
-
-add_rewrite tproj1_tpair tproj2_tpair
-
-
---
--- some stuff for the kernel
--- TODO: come up with better names?
---
-
-theorem imp_eq_true {b : Bool} : b → b = ⊤
-:= case _ (take H, refl _) (take H, false_elim _ H) b
-
-theorem not_imp_eq_false {b : Bool} : ¬ b → b = ⊥
-:= case (λx, ¬ x → x = ⊥) (take H, absurd_elim _ trivial H) (take H, refl _) b
-
-theorem imp_if_eq {A : Type} {b : Bool} (H : b) (a a' : A) : (if b then a else a') = a
-:= 
-  calc
-    (if b then a else a') = (if ⊤ then a else a') : {imp_eq_true H}
-      ... = a : if_true _ _
-
-theorem not_imp_if_eq {A : Type} {b : Bool} (H : ¬ b) (a a' : A) : (if b then a else a') = a'
-:= 
-  calc
-    (if b then a else a') = (if ⊥ then a else a') : {not_imp_eq_false H}
-      ... = a' : if_false _ _
-
--- allows "proof by cases"
-theorem by_cases {P : Bool} (b : Bool) (H1 : b → P) (H2 : ¬ b → P) : P
-:= or_elim (em b) H1 H2
-
-
---
--- some stuff nat
+-- some stuff for nat
 --
 
 add_rewrite add_zero_left add_zero_right
 add_rewrite mul_zero_left mul_zero_right
-
--- this seems to be the more natural formulation
-theorem succ_positive' (x : ℕ) : succ x > 0 := succ_positive (refl _)
 
 -- add to nat, and variations
 theorem not_lt_imp_le {x y : ℕ} (H : ¬ x < y) : y ≤ x
@@ -173,7 +117,7 @@ theorem mod_lt (x y : ℕ) (H : y > 0) : x mod y < y
   obtain (y' : ℕ) (H1 : y = succ y'), from positive_succ H,
   have H2 : x mod succ y' < succ y', from
     induction_on x
-      (subst (succ_positive' y') (symm (zero_mod (succ y'))))
+      (subst (lt_zero y') (symm (zero_mod (succ y'))))
       (take x', 
         let t1 := x' mod succ y' in
         let t2 := if t1 < y' then succ t1 else 0 in
@@ -187,7 +131,7 @@ theorem mod_lt (x y : ℕ) (H : y > 0) : x mod y < y
               show t2 < succ y', from subst H7 (symm H6))
             (assume H5 : ¬ t1 < y',
               have H6 : t2 = 0, from not_imp_if_eq H5 _ _,
-              have H7 : 0 < succ y', from succ_positive' _,
+              have H7 : 0 < succ y', from lt_zero _,
               show t2 < succ y', from subst H7 (symm H6)),
         show succ x' mod succ y' < succ y', from subst H4 (symm H3)),
   show x mod y < y, from subst H2 (symm H1)
@@ -226,7 +170,7 @@ theorem div_mod_eq (x y : ℕ) : x = (x div y) * y + x mod y
                     from (trans (mod_succ_succ _ _) (not_imp_if_eq H1 _ _)),
                   have H4 : x' mod succ y' = y', from
                     le_antisym
-                      (show x' mod succ y' ≤ y', from lt_succ_le (mod_lt _ _ (succ_positive' _)))
+                      (show x' mod succ y' ≤ y', from lt_succ_le (mod_lt _ _ (lt_zero _)))
                       (show y' ≤ x' mod succ y', from not_lt_imp_le H1),
                   symm (calc
                     (succ x' div succ y') * succ y' + succ x' mod succ y' = 

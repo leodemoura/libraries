@@ -226,6 +226,10 @@ theorem em (a : Bool) : a ∨ ¬ a
      (assume Ht : a = true, or_intro_left (¬ a) (eqt_elim Ht))
      (assume Hf : a = false, or_intro_right a (eqf_elim Hf))
 
+-- allows "proof by cases"
+theorem by_cases {P : Bool} (b : Bool) (H1 : b → P) (H2 : ¬ b → P) : P
+:= or_elim (em b) H1 H2
+
 theorem boolcomplete_swapped (a : Bool) : a = false ∨ a = true
 := case (λ x, x = false ∨ x = true)
         (or_intro_right (true = false) (refl true))
@@ -964,6 +968,24 @@ theorem eq_if_distribute_right {A : (Type U)} (c : Bool) (a b v : A) : (v = (if 
 theorem eq_if_distribute_left {A : (Type U)} (c : Bool) (a b v : A) : ((if c then a else b) = v) = if c then a = v else b = v
 := app_if_distribute c (λ x, x = v) a b
 
+theorem imp_eq_true {b : Bool} : b → b = ⊤
+:= case _ (take H, refl _) (take H, false_elim _ H) b
+
+theorem not_imp_eq_false {b : Bool} : ¬ b → b = ⊥
+:= case (λx, ¬ x → x = ⊥) (take H, absurd_elim _ trivial H) (take H, refl _) b
+
+theorem imp_if_eq {A : Type} {b : Bool} (H : b) (a a' : A) : (if b then a else a') = a
+:= 
+  calc
+    (if b then a else a') = (if ⊤ then a else a') : {imp_eq_true H}
+      ... = a : if_true _ _
+
+theorem not_imp_if_eq {A : Type} {b : Bool} (H : ¬ b) (a a' : A) : (if b then a else a') = a'
+:= 
+  calc
+    (if b then a else a') = (if ⊥ then a else a') : {not_imp_eq_false H}
+      ... = a' : if_false _ _
+
 set_opaque exists  true
 set_opaque not     true
 set_opaque or      true
@@ -1008,6 +1030,31 @@ theorem pairext_proj {A B : (Type U)} {p : A # B} {a : A} {b : B} (H1 : proj1 p 
 theorem hpairext_proj {A : (Type U)} {B : A → (Type U)} {p : sig x, B x} {a : A} {b : B a}
                       (H1 : proj1 p = a) (H2 : proj2 p == b) : p = (pair a b)
 := pairext p (pair a b) H1 H2
+
+--
+-- temporary definition of the product of two types - will be eliminated with Lean 0.2
+--
+
+definition tprod (A B : Type) := A ⨯ B
+definition tpair {A B : Type} (a : A) (b : B) : tprod A B := pair a b
+definition tproj1 {A B : Type} (p : tprod A B) := proj1 p
+definition tproj2 {A B : Type} (p : tprod A B) := proj2 p
+
+theorem tproj1_tpair {A B : Type} (a : A) (b : B) : tproj1 (tpair a b) = a
+:= refl _
+
+theorem tproj2_tpair {A B : Type} (a : A) (b : B) : tproj2 (tpair a b) = b
+:= refl _
+
+set_opaque tprod true
+set_opaque tpair true
+set_opaque tproj1 true
+set_opaque tproj2 true
+
+infix 60 ## : tprod
+
+add_rewrite tproj1_tpair tproj2_tpair
+
 
 -- Heterogeneous equality axioms and theorems
 
