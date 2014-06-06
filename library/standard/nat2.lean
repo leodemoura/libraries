@@ -18,6 +18,45 @@ using nat
 unary_nat
 
 --
+-- some stuff for nat
+--
+
+add_rewrite add_zero_left add_zero_right
+add_rewrite mul_zero_left mul_zero_right
+
+theorem complete_induction_on {P : nat → Bool} (a : nat)
+    (H : ∀(n : nat), (∀m, m < n → P m) → P n) : P a
+:=
+  have H1 : ∀n, ∀m, m < n → P m, from
+    take n,
+    induction_on n
+      (show ∀m, m < 0 → P m, from take m H, absurd_elim _ H (lt_zero_inv _))
+      (take n',
+        assume IH : ∀m, m < n' → P m,
+        have H2: P n', from H n' IH,
+        show ∀m, m < succ n' → P m, from
+          take m, 
+          assume H3 : m < succ n',
+          or_elim (le_lt_or (lt_succ_le H3)) 
+            (assume H4: m < n', IH _ H4)
+            (assume H4: m = n', subst H2 (symm H4))),
+  H1 _ _ (self_lt_succ a)
+
+theorem complete_induction'_on {P : nat → Bool} (a : nat) (H0 : P 0)
+    (Hind : ∀(n : nat), (∀m, m ≤ n → P m) → P (succ n)) : P a
+:=
+  complete_induction_on a (
+    take n,
+    show (∀m, m < n → P m) → P n, from
+      nat_case n
+         (assume H : (∀m, m < 0 → P m), show P 0, from H0)
+         (take n,
+           assume H : (∀m, m < succ n → P m),
+           show P (succ n), from
+             Hind n (take m, assume H1 : m ≤ n, H _ (le_lt_succ H1))))
+
+   
+--
 -- div and mod
 --
 
@@ -168,3 +207,113 @@ theorem div_mod_eq (x y : ℕ) : x = (x div y) * y + x mod y
                       ... = succ (x' div succ y' * succ y' + y') : add_succ_right _ _
                       ... = succ (x' div succ y' * succ y' + x' mod succ y') : {symm H4}
                       ... = succ x' : {symm IH}))))
+
+
+--
+-- A general recursion principle.
+--
+-- Data:
+--
+--   dom, codom : Type
+--   default : codom
+--   measure : dom → ℕ
+--   rec_val : dom → (dom → codom) → codom
+--
+-- and a proof
+--
+--   rec_decreasing : ∀m, m ≥ measure x, rec_val x f = rec_val x (restrict f m)
+--
+-- ... which says that the recursive call only depends on f at values with measure less than x,
+-- in the sense that changing other values to the default value doesn't change the result.
+-- 
+-- The result is a function f = rec_measure, satisfying
+--
+--   f x = rec_val x f
+--
+
+definition restrict {dom codom : Type} (default : codom) (measure : dom → ℕ) (f : dom → codom) 
+    (m : ℕ) (x : dom)
+:= if measure x < m then f x else default
+
+definition rec_measure_aux {dom codom : Type} (default : codom) (measure : dom → ℕ)
+    (rec_val : dom → (dom → codom) → codom) : ℕ → dom → codom
+:= nat_rec (λx, default) (λm g x, if measure x < succ m then rec_val x g else default)
+
+definition rec_measure {dom codom : Type} (default : codom) (measure : dom → ℕ)
+    (rec_val : dom → (dom → codom) → codom) (x : dom) : codom
+:= rec_measure_aux default measure rec_val (succ (measure x)) x
+
+theorem rec_measure_aux_spec {dom codom : Type} (default : codom) (measure : dom → ℕ)
+    (rec_val : dom → (dom → codom) → codom) 
+    (rec_decreasing : ∀g m x, m ≥ measure x → 
+        rec_val x g = rec_val x (restrict default measure g m)) 
+    (m : ℕ) :
+  let f' := rec_measure_aux default measure rec_val in
+  let f := rec_measure default measure rec_val in
+  f' m = restrict default measure f m
+:=
+  let f' := rec_measure_aux default measure rec_val in
+  let f := rec_measure default measure rec_val in
+  complete_induction'_on m
+    (have H1 : f' 0 = (λx, default), from nat_rec_zero _ _,
+      have H2 : restrict default measure f 0 = (λx, default), from
+        funext 
+          (take x,
+            have H3: ¬ measure x < 0, from lt_zero_inv _,
+            show restrict default measure f 0 x = default, from not_imp_if_eq H3 _ _),
+      show f' 0 = restrict default measure f 0, from trans H1 (symm H2)) 
+    (take m,
+      assume IH: ∀n, n ≤ m → f' n = restrict default measure f n,
+      funext 
+        (take x : dom, 
+          show f' (succ m) x = restrict default measure f (succ m) x, from
+            by_cases (measure x < succ m)
+              (assume H1 : measure x < succ m,
+                have H2 : f' (succ m) x = rec_val x f, from
+                  calc
+                    f' (succ m) x = if measure x < succ m then rec_val x (f' m) else default :
+                        congr1 (nat_rec_succ _ _ _) x
+                      ... = rec_val x (f' m) : imp_if_eq H1 _ _
+                      ... = rec_val x (restrict default measure f m) : {IH m (le_refl m)}
+                      ... = rec_val x f : symm (rec_decreasing _ _ _ (lt_succ_le H1)),
+                have H3 : restrict default measure f (succ m) x = rec_val x f, from
+                  let m' := measure x in
+                  calc
+                    restrict default measure f (succ m) x = f x : imp_if_eq H1 _ _
+                      ... = f' (succ m') x : refl _
+                      ... = if measure x < succ m' then rec_val x (f' m') else default : 
+                          congr1 (nat_rec_succ _ _ _) x
+                      ... = rec_val x (f' m') : imp_if_eq (self_lt_succ _) _ _
+                      ... = rec_val x (restrict default measure f m') : {IH m' (lt_succ_le H1)}
+                      ... = rec_val x f : symm (rec_decreasing _ _ _ (le_refl _)),
+                show f' (succ m) x = restrict default measure f (succ m) x,
+                  from trans H2 (symm H3))
+              (assume H1 : ¬ measure x < succ m,
+                have H2 : f' (succ m) x = default, from 
+                  calc
+                    f' (succ m) x = if measure x < succ m then rec_val x (f' m) else default :
+                        congr1 (nat_rec_succ _ _ _) x
+                      ... = default : not_imp_if_eq H1 _ _,
+                have H3 : restrict default measure f (succ m) x = default, 
+                  from not_imp_if_eq H1 _ _,
+                show f' (succ m) x = restrict default measure f (succ m) x, 
+                  from trans H2 (symm H3))))
+
+theorem rec_measure_spec {dom codom : Type} (default : codom) (measure : dom → ℕ)
+    (rec_val : dom → (dom → codom) → codom) 
+    (rec_decreasing : ∀g m x, m ≥ measure x → 
+        rec_val x g = rec_val x (restrict default measure g m)) 
+    (m : ℕ) (x : dom):
+  let f := rec_measure default measure rec_val in
+  f x = rec_val x f
+:=
+  let f' := rec_measure_aux default measure rec_val in
+  let f := rec_measure default measure rec_val in
+  let m := measure x in
+  calc
+    f x = f' (succ m) x : refl _
+      ... = if measure x < succ m then rec_val x (f' m) else default : 
+                          congr1 (nat_rec_succ _ _ _) x
+      ... = rec_val x (f' m) : imp_if_eq (self_lt_succ _) _ _
+      ... = rec_val x (restrict default measure f m) : {rec_measure_aux_spec _ _ _ rec_decreasing _}
+      ... = rec_val x f : symm (rec_decreasing _ _ _ (le_refl _))
