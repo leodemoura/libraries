@@ -1,0 +1,26 @@
+TOP := $(dir $(lastword $(MAKEFILE_LIST)))
+LEAN = lean
+EXTRACT_DEPS = $(TOP)/extract_deps
+LEAN_FILES = $(wildcard *.lean)
+OLEAN_FILES = $(LEAN_FILES:.lean=.olean)
+DEPS = make.deps
+
+all: $(OLEAN_FILES) $(DEPS)
+
+%.olean: %.lean
+	$(LEAN) $< -n -o $@
+
+%.olean: %.lua
+	$(LEAN) $< -n -o $@
+
+.PHONY: all clean
+
+clean:
+	-rm -f *.olean $(DEPS)
+
+$(DEPS): $(LEAN_FILES)
+	LEAN=$(LEAN) $(EXTRACT_DEPS) $(LEAN_FILES) > make.deps
+
+ifneq ($(MAKECMDGOALS),clean)
+-include $(DEPS)
+endif
