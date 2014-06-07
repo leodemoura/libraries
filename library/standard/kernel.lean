@@ -226,7 +226,7 @@ theorem em (a : Bool) : a ∨ ¬ a
      (assume Ht : a = true, or_intro_left (¬ a) (eqt_elim Ht))
      (assume Hf : a = false, or_intro_right a (eqf_elim Hf))
 
--- allows "proof by cases"
+-- allows "proof by cases" -- suggestion: make b implicit
 theorem by_cases {P : Bool} (b : Bool) (H1 : b → P) (H2 : ¬ b → P) : P
 := or_elim (em b) H1 H2
 
@@ -1104,6 +1104,15 @@ theorem tproj2_tpair {A B : Type} (a : A) (b : B) : tproj2 (tpair a b) = b
 
 theorem tpair_tproj_eq {A B : Type} (a : A ## B) : tpair (tproj1 a) (tproj2 a) = a
 := pair_proj_eq a
+
+theorem tpairext {A B : Type} {a b : A ## B} (H1 : tproj1 a = tproj1 b) (H2 : tproj2 a = tproj2 b)
+    : a = b
+:=
+  calc
+    a = tpair (tproj1 a) (tproj2 a) : symm (tpair_tproj_eq a)
+  ... = tpair (tproj1 b) (tproj2 a) : {H1}
+  ... = tpair (tproj1 b) (tproj2 b) : {H2}
+  ... = b : tpair_tproj_eq b
 
 theorem tpair_congr {A B : Type} {a a' : A} {b b' : B} (Ha : a = a') (Hb : b = b')
     : (tpair a b) = (tpair a' b')
