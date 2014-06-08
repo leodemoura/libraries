@@ -383,11 +383,27 @@ theorem or_tauto (a : Bool) : a ∨ ¬ a ↔ true
 theorem or_left_comm (a b c : Bool) : a ∨ (b ∨ c) ↔ b ∨ (a ∨ c)
 := left_comm or_comm or_assoc a b c
 
+theorem or_right_comm (a b c : Bool) : (a ∨ b) ∨ c ↔ (a ∨ c) ∨ b
+:= right_comm or_comm or_assoc a b c
+
 theorem or_imp_or {a b c d : Bool} (H1 : a ∨ b) (H2 : a → c) (H3 : b → d) : c ∨ d
 :=
   or_elim H1
     (assume Ha : a, or_intro_left d (H2 Ha))
     (assume Hb : b, or_intro_right c (H3 Hb))
+
+-- TODO: maybe rename to imp_or_left
+theorem or_imp_or_left {a b c : Bool} (H1 : a ∨ c) (H : a → b) : b ∨ c
+:= 
+  or_elim H1
+    (assume H2 : a, or_intro_left _ (H H2)) 
+    (assume H2 : c, or_intro_right _ H2)
+ 
+theorem or_imp_or_right {a b c : Bool} (H1 : c ∨ a) (H : a → b) : c ∨ b
+:= 
+  or_elim H1
+    (assume H2 : c, or_intro_left _ H2)
+    (assume H2 : a, or_intro_right _ (H H2)) 
 
 add_rewrite or_comm or_assoc or_id or_false_left or_false_right
             or_true_left or_true_right or_tauto or_left_comm
