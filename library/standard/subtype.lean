@@ -12,15 +12,16 @@ namespace subtype
 definition rep {A : Type} {P : A → Bool} (a : subtype A P) : A
 := proj1 a
 
+-- suggestion: swap r and H
 definition abst {A : Type} {P : A → Bool} (r : A) (H : inhabited (subtype A P)) : subtype A P
 := ε H (λ a, rep a = r)
 
+-- suggestion: a implicit?
 theorem subtype_inhabited {A : Type} {P : A → Bool} (a : A) (H : P a) : inhabited (subtype A P)
 := inhabited_intro (pair a H)
 
 theorem subtype_inhabited_exists {A : Type} {P : A → Bool} (H : ∃ x, P x) : inhabited (subtype A P)
-:= obtain (w : A) (Hw : P w), from H,
-     inhabited_intro (pair w Hw)
+:= obtain (w : A) (Hw : P w), from H, inhabited_intro (pair w Hw)
 
 theorem P_rep {A : Type} {P : A → Bool} (a : subtype A P) : P (rep a)
 := proj2 a

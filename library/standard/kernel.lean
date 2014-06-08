@@ -904,6 +904,7 @@ theorem eta {A : (Type U)} {B : A → (Type U)} (f : ∀ x : A, B x) : (λ x : A
 -- Epsilon (Hilbert's operator)
 variable eps {A : (Type U)} (H : inhabited A) (P : A → Bool) : A
 alias ε : eps
+-- suggestion: make "a" implicit
 axiom eps_ax {A : (Type U)} (H : inhabited A) {P : A → Bool} (a : A) : P a → P (ε H P)
 
 theorem eps_th {A : (Type U)} {P : A → Bool} (a : A) : P a → P (ε (inhabited_intro a) P)
