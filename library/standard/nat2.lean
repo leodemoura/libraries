@@ -208,6 +208,66 @@ theorem div_mod_eq (x y : ℕ) : x = (x div y) * y + x mod y
                       ... = succ (x' div succ y' * succ y' + x' mod succ y') : {symm H4}
                       ... = succ x' : {symm IH}))))
 
+theorem mod_le (x y : ℕ) : x mod y ≤ x
+:= subst (le_add_left (x mod y) _) (symm (div_mod_eq _ _))
+
+--
+-- divides
+--
+
+definition dvd (x y : ℕ) : Bool := y mod x = 0
+
+infix 50 | : dvd
+
+theorem dvd_iff_mod_eq_zero (x y : ℕ) : y | x ↔ x mod y = 0
+:= refl _
+
+theorem dvd_imp_div_mul_eq {x y : ℕ} (H : y | x) : x div y * y = x
+:= 
+  symm (calc 
+    x = x div y * y + x mod y : div_mod_eq _ _
+      ... = x div y * y + 0 : {(dvd_iff_mod_eq_zero _ _) ◂ H}
+      ... = x div y * y : add_zero_right _)
+
+theorem mul_eq_imp_dvd {z x y : ℕ} (H : z * y = x) :  y | x
+:=
+  have H1 : z * y = x mod y + x div y * y, from trans (trans H (div_mod_eq x y)) (add_comm _ _),
+  have H2 : (z - x div y) * y = x mod y, from 
+    calc 
+      (z - x div y) * y = z * y - x div y * y : mul_sub_distr_left _ _ _
+         ... = x mod y + x div y * y - x div y * y : {H1}
+         ... = x mod y : sub_add_left _ _,
+  show x mod y = 0, from
+    by_cases (y = 0)
+      (assume yz : y = 0, 
+        have xz : x = 0, from
+          calc 
+            x = z * y : symm H
+              ... = z * 0 : {yz}
+              ... = 0 : mul_zero_right _,
+        calc
+          x mod y = x mod 0 : {yz}
+            ... = x : mod_zero _
+            ... = 0 : xz)
+      (assume ynz : y ≠ 0,
+        have ypos : y > 0, from ne_zero_positive ynz,
+        have H3 : (z - x div y) * y < y, from subst (mod_lt x y ypos) (symm H2),
+        have H4 : (z - x div y) * y < 1 * y, from subst H3 (symm (mul_one_left y)),
+        have H5 : z - x div y < 1, from mul_lt_right_inv H4,
+        have H6 : z - x div y = 0, from le_zero_inv (lt_succ_le H5),
+        calc 
+          x mod y = (z - x div y) * y : symm H2 
+            ... = 0 * y : {H6}
+            ... = 0 : mul_zero_left _)
+
+theorem dvd_iff_exists_mul (x y : ℕ) : x | y ↔ ∃z, z * x = y
+:=
+  iff_intro
+    (assume H : x | y, 
+      show ∃z, z * x = y, from exists_intro _ (dvd_imp_div_mul_eq H))
+    (assume H : ∃z, z * x = y,
+      obtain (z : ℕ) (zx_eq : z * x = y), from H,
+      show x | y, from mul_eq_imp_dvd zx_eq)
 
 --
 -- A general recursion principle.
@@ -231,9 +291,19 @@ theorem div_mod_eq (x y : ℕ) : x = (x div y) * y + x mod y
 --   f x = rec_val x f
 --
 
-definition restrict {dom codom : Type} (default : codom) (measure : dom → ℕ) (f : dom → codom) 
+definition restrict {dom codom : Type} (default : codom) (measure : dom → ℕ) (f : dom → codom)
     (m : ℕ) (x : dom)
 := if measure x < m then f x else default
+
+theorem restrict_lt_eq {dom codom : Type} (default : codom) (measure : dom → ℕ) (f : dom → codom) 
+    (m : ℕ) (x : dom) (H : measure x < m) : 
+  restrict default measure f m x = f x
+:= imp_if_eq H _ _
+
+theorem restrict_not_lt_eq {dom codom : Type} (default : codom) (measure : dom → ℕ) 
+    (f : dom → codom) (m : ℕ) (x : dom) (H : ¬ measure x < m) : 
+  restrict default measure f m x = default
+:= not_imp_if_eq H _ _
 
 definition rec_measure_aux {dom codom : Type} (default : codom) (measure : dom → ℕ)
     (rec_val : dom → (dom → codom) → codom) : ℕ → dom → codom
@@ -299,13 +369,13 @@ theorem rec_measure_aux_spec {dom codom : Type} (default : codom) (measure : dom
                 show f' (succ m) x = restrict default measure f (succ m) x, 
                   from trans H2 (symm H3))))
 
-theorem rec_measure_spec {dom codom : Type} (default : codom) (measure : dom → ℕ)
+theorem rec_measure_spec {dom codom : Type} {default : codom} {measure : dom → ℕ}
     (rec_val : dom → (dom → codom) → codom) 
     (rec_decreasing : ∀g m x, m ≥ measure x → 
-        rec_val x g = rec_val x (restrict default measure g m)) 
-    (m : ℕ) (x : dom):
+      rec_val x g = rec_val x (restrict default measure g m)) 
+    (x : dom):
   let f := rec_measure default measure rec_val in
-  f x = rec_val x f
+  f x = rec_val x f 
 :=
   let f' := rec_measure_aux default measure rec_val in
   let f := rec_measure default measure rec_val in
@@ -317,3 +387,57 @@ theorem rec_measure_spec {dom codom : Type} (default : codom) (measure : dom →
       ... = rec_val x (f' m) : imp_if_eq (self_lt_succ _) _ _
       ... = rec_val x (restrict default measure f m) : {rec_measure_aux_spec _ _ _ rec_decreasing _}
       ... = rec_val x f : symm (rec_decreasing _ _ _ (le_refl _))
+
+--
+-- gcd
+--
+
+definition gcd_aux_measure (p : ℕ ## ℕ) : ℕ 
+:= tproj2 p
+
+definition gcd_aux_rec (p : ℕ ## ℕ) (gcd_aux' : ℕ ## ℕ → ℕ) : ℕ 
+:= 
+  let x := tproj1 p, y := tproj2 p in
+  if y = 0 then x else gcd_aux' (tpair y (x mod y))
+
+definition gcd_aux : ℕ ## ℕ → ℕ := rec_measure 0 gcd_aux_measure gcd_aux_rec
+
+theorem gcd_aux_decreasing (g : ℕ ## ℕ → ℕ) (m : ℕ) (p : ℕ ## ℕ) (H : m ≥ gcd_aux_measure p) :
+    gcd_aux_rec p g = gcd_aux_rec p (restrict 0 gcd_aux_measure g m)
+:=
+  let x := tproj1 p, y := tproj2 p in
+  let p' := tpair y (x mod y) in
+  let lhs := gcd_aux_rec p g in
+  let rhs := gcd_aux_rec p (restrict 0 gcd_aux_measure g m) in
+  show lhs = rhs, from 
+    by_cases (y = 0)
+      (assume H1 : y = 0,
+        calc 
+          lhs = x : imp_if_eq H1 _ _
+            ... = rhs : symm (imp_if_eq H1 _ _))
+      (assume H1 : y ≠ 0,
+        have ypos : y > 0, from ne_zero_positive H1,
+        have H2 : gcd_aux_measure p' = x mod y, from tproj2_tpair _ _,
+        have H3 : gcd_aux_measure p' < gcd_aux_measure p, from subst (mod_lt _ _ ypos) (symm H2), 
+        have H4: gcd_aux_measure p' < m, from lt_le_trans H3 H,
+        symm (calc
+          rhs = restrict 0 gcd_aux_measure g m p' : not_imp_if_eq H1 _ _
+            ... = g p' : restrict_lt_eq _ _ _ _ _ H4
+            ... = lhs : symm (not_imp_if_eq H1 _ _)))
+
+theorem gcd_aux_spec (p : ℕ ## ℕ) : gcd_aux p =
+  let x := tproj1 p, y := tproj2 p in
+  if y = 0 then x else gcd_aux (tpair y (x mod y))
+:= rec_measure_spec gcd_aux_rec gcd_aux_decreasing p
+
+definition gcd (x y : ℕ) : ℕ := gcd_aux (tpair x y)
+
+theorem gcd_def (x y : ℕ) : gcd x y = if y = 0 then x else gcd y (x mod y)
+:= 
+  let x' := tproj1 (tpair x y), y' := tproj2 (tpair x y) in 
+  calc
+    gcd x y = if y' = 0 then x' else gcd_aux (tpair y' (x' mod y')) 
+        : gcd_aux_spec (tpair x y) 
+      ... = if y = 0 then x' else gcd_aux (tpair y (x' mod y)) : {tproj2_tpair x y}
+      ... = if y = 0 then x else gcd_aux (tpair y (x mod y)) : {tproj1_tpair x y}
+      ... = if y = 0 then x else gcd y (x mod y) : refl _
