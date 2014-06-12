@@ -225,6 +225,14 @@ theorem add_comm_left (n m k : nat) : n + (m + k) = m + (n + k)
 theorem add_comm_right (n m k : nat) : n + m + k = n + k + m
 := right_comm add_comm add_assoc n m k
 
+--the following is used a couple of times in int.lean
+theorem add_switch (n m k l : nat) : n + m + (k + l) = n + k + (m + l)
+:=
+  calc
+    n + m + (k + l) = n + m + k + l : symm (add_assoc (n + m) k l)
+      ... = n + k + m + l : {add_comm_right n m k}
+      ... = n + k + (m + l) : add_assoc (n + k) m l
+
 ---------- inversion
 
 --rename to add_inj_left
@@ -351,7 +359,7 @@ theorem mul_comm (n m:nat) : n * m = m * n
           ... = k * n + n : {IH}
           ... = (succ k) * n : symm (mul_succ_left _ _))
 
-theorem mul_add_distr_left (n m k : nat) : (n + m) * k = n * k + m * k
+theorem mul_add_distr_right (n m k : nat) : (n + m) * k = n * k + m * k
 :=
   induction_on k
     (calc
@@ -369,11 +377,11 @@ theorem mul_add_distr_left (n m k : nat) : (n + m) * k = n * k + m * k
           ... = n * succ l + (m * l + m) : {symm (mul_succ_right _ _)}
           ... = n * succ l + m * succ l : {symm (mul_succ_right _ _)})
 
-theorem mul_add_distr_right (n m k : nat) : n * (m + k) = n * m + n * k
+theorem mul_add_distr_left (n m k : nat) : n * (m + k) = n * m + n * k
 :=
   calc
     n * (m + k) = (m + k) * n : mul_comm _ _
-      ... = m * n + k * n : mul_add_distr_left _ _ _
+      ... = m * n + k * n : mul_add_distr_right _ _ _
       ... = n * m + k * n : {mul_comm _ _}
       ... = n * m + n * k : {mul_comm _ _}
 
@@ -388,7 +396,7 @@ theorem mul_assoc (n m k:nat) : (n * m) * k = n * (m * k)
       calc
         (n * m) * succ l = (n * m) * l + n * m : mul_succ_right _ _
           ... = n * (m * l) + n * m : {IH}
-          ... = n * (m * l + m) : symm (mul_add_distr_right _ _ _)
+          ... = n * (m * l + m) : symm (mul_add_distr_left _ _ _)
           ... = n * (m * succ l) : {symm (mul_succ_right _ _)})
 
 theorem mul_comm_left (n m k : nat) : n * (m * k) = m * (n * k)
@@ -1233,7 +1241,7 @@ theorem mul_pred_right (n m : nat) : n * pred m = n * m - n
     ... = m * n - n : mul_pred_left m n
     ... = n * m - n : {mul_comm m n}
 
-theorem mul_sub_distr_left (n m k : nat) : (n - m) * k = n * k - m * k
+theorem mul_sub_distr_right (n m k : nat) : (n - m) * k = n * k - m * k
 :=
   induction_on m
     (calc
@@ -1249,11 +1257,11 @@ theorem mul_sub_distr_left (n m k : nat) : (n - m) * k = n * k - m * k
           ... = n * k - (l * k + k) : sub_sub _ _ _
           ... = n * k - (succ l * k) : {symm (mul_succ_left l k)})
 
-theorem mul_sub_distr_right (n m k : nat) : n * (m - k) = n * m - n * k
+theorem mul_sub_distr_left (n m k : nat) : n * (m - k) = n * m - n * k
 :=
   calc
     n * (m - k) = (m - k) * n : mul_comm _ _
-      ... = m * n - k * n : mul_sub_distr_left _ _ _
+      ... = m * n - k * n : mul_sub_distr_right _ _ _
       ... = n * m - k * n : {mul_comm _ _}
       ... = n * m - n * k : {mul_comm _ _}
 

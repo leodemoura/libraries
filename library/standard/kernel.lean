@@ -394,16 +394,16 @@ theorem or_imp_or {a b c d : Bool} (H1 : a ∨ b) (H2 : a → c) (H3 : b → d) 
 
 -- TODO: maybe rename to imp_or_left
 theorem or_imp_or_left {a b c : Bool} (H1 : a ∨ c) (H : a → b) : b ∨ c
-:= 
+:=
   or_elim H1
-    (assume H2 : a, or_intro_left _ (H H2)) 
+    (assume H2 : a, or_intro_left _ (H H2))
     (assume H2 : c, or_intro_right _ H2)
- 
+
 theorem or_imp_or_right {a b c : Bool} (H1 : c ∨ a) (H : a → b) : c ∨ b
-:= 
+:=
   or_elim H1
     (assume H2 : c, or_intro_left _ H2)
-    (assume H2 : a, or_intro_right _ (H H2)) 
+    (assume H2 : a, or_intro_right _ (H H2))
 
 add_rewrite or_comm or_assoc or_id or_false_left or_false_right
             or_true_left or_true_right or_tauto or_left_comm
@@ -1140,7 +1140,7 @@ theorem tpairext_proj {A B : Type} {p : A ## B} {a : A} {b : B}
 := pairext_proj H1 H2
 
 theorem htpairext_proj {A B : Type} {p : A ## B} {a : A} {b : B}
-                      (H1 : tproj1 p = a) (H2 : tproj2 p == b) : p = (tpair a b)
+                      (H1 : tproj1 p = a) (H2 : tproj2 p = b) : p = (tpair a b)
 := hpairext_proj H1 H2
 
 set_opaque tprod true

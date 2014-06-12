@@ -6,317 +6,18 @@
 ----------------------------------------------------------------------------------------------------
 
 import nat
-import macros
-import subtype
-
--- for kernel?
-theorem eq_hcongr2 {A B : (Type U)} {a b : A} (f : A → B) (H : a = b) : f a == f b
-:= subst (congr2 f H) (symm (heq_eq (f a) (f b)))
-
-theorem and_inhabited_left {a : Bool} (b : Bool) (H : a) : a ∧ b ↔ b
-:=
-  have H2 : a = true, from eqt_intro H,
-  subst (and_true_left b) (symm H2)
-
--- relations
-
-definition reflexive {A : Type} (R : A → A → Bool) : Bool := ∀a, R a a
-definition transitive {A : Type} (R : A → A → Bool) : Bool := ∀a b c, R a b → R b c → R a c
-definition symmetric {A : Type} (R : A → A → Bool) : Bool := ∀a b, R a b → R b a
-definition equivalence {A : Type} (R : A → A → Bool) : Bool
-:= reflexive R ∧ symmetric R ∧ transitive R
-definition PER {A : Type} (R : A → A → Bool) : Bool := symmetric R ∧ transitive R
-
-definition equiv_imp_PER {A : Type} {R : A → A → Bool} (H : equivalence R) : PER R
-:= and_intro (and_elim_left (and_elim_right H)) (and_elim_right (and_elim_right H))
-
-
--- pairs
-
-alias xx : tproj1
-alias yy : tproj2
-
-definition flip {A B : Type} (a : A ## B) : B ## A := tpair (yy a) (xx a)
-
-theorem flip_pair {A B : Type} (a : A) (b : B) : flip (tpair a b) = tpair b a
-:=
-  calc
-    flip (tpair a b) = tpair b (xx (tpair a b)) : {tproj2_tpair _ _}
-      ... = tpair b a : {tproj1_tpair _ _}
-
-theorem flip_xx {A B : Type} (a : A ## B) : xx (flip a) = yy a
-:= tproj1_tpair (yy a) (xx a)
-
-theorem flip_yy {A B : Type} (a : A ## B) : yy (flip a) = xx a
-:= tproj2_tpair (yy a) (xx a)
-
-theorem flip_flip {A B : Type} (a : A ## B) : flip (flip a) = a
-:=
-  calc
-    flip (flip a) = tpair (xx a) (yy a) : flip_pair (yy a) (xx a)
-      ... = a : tpair_tproj_eq a
-
-theorem P_flip {A B : Type} {P : A → B → Bool} {a : A ## B} (H : P (xx a) (yy a))
-    : P (yy (flip a)) (xx (flip a))
-:= subst (subst H (symm (flip_xx a))) (symm (flip_yy a))
-
-theorem flip_inj {A B : Type} {a b : A ## B} (H : flip a = flip b) : a = b
-:=
-  have H2 : flip (flip a) = flip (flip b), from congr2 flip H,
-  show a = b, from subst (subst H2 (flip_flip a)) (flip_flip b)
-
-set_opaque flip true
-
--------------------------------------------------- quotients
-
-namespace quot
-using subtype
-
----------- definition and basics
-
-definition is_quotient {A B : Type} (R : A → A → Bool) (abs : A → B) (rep : B → A) : Bool
-:=
-  (∀b, abs (rep b) = b) ∧
-  (∀b, R (rep b) (rep b)) ∧
-  (∀r s, R r s ↔ (R r r ∧ R s s ∧ abs r = abs s))
-
-theorem quotient_intro {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (H1 : ∀b, abs (rep b) = b) (H2 : ∀b, R (rep b) (rep b))
-    (H3 : ∀r s, R r s ↔ (R r r ∧ R s s ∧ abs r = abs s)) : is_quotient R abs rep
-:= and_intro H1 (and_intro H2 H3)
-
-theorem quotient_intro_refl {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (H1 : reflexive R) (H2 : ∀b, abs (rep b) = b)
-    (H3 : ∀r s, R r s ↔ abs r = abs s) : is_quotient R abs rep
-:=
-  quotient_intro
-    H2
-    (take b, H1 (rep b))
-    (take r s,
-      have H4 : R r s ↔ R s s ∧ abs r = abs s,
-        from subst (H3 r s) (symm (and_inhabited_left _ (H1 s))),
-      subst H4 (symm (and_inhabited_left _ (H1 r))))
-
-theorem quotient_abs_rep {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) (b : B) :  abs (rep b) = b
-:= and_elim_left Q b
-
-theorem quotient_refl_rep {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) (b : B) : R (rep b) (rep b)
-:= and_elim_left (and_elim_right Q) b
-
-theorem quotient_R_iff {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) (r s : A) : R r s ↔ (R r r ∧ R s s ∧ abs r = abs s)
-:= and_elim_right (and_elim_right Q) r s
-
-theorem quotient_refl_left {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) {r s : A} (H : R r s) : R r r
-:= and_elim_left (iff_elim_left (quotient_R_iff Q r s) H)
-
-theorem quotient_refl_right {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) {r s : A} (H : R r s) : R s s
-:= and_elim_left (and_elim_right (iff_elim_left (quotient_R_iff Q r s) H))
-
-theorem quotient_eq_abs {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) {r s : A} (H : R r s) : abs r = abs s
-:= and_elim_right (and_elim_right (iff_elim_left (quotient_R_iff Q r s) H))
-
-theorem quotient_R_intro {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) {r s : A} (H1 : R r r) (H2 : R s s) (H3 : abs r = abs s) : R r s
-:= iff_elim_right (quotient_R_iff Q r s) (and_intro H1 (and_intro H2 H3))
-
-theorem quotient_R_intro_refl {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) (H1 : reflexive R) {r s : A} (H2 : abs r = abs s) : R r s
-:= iff_elim_right (quotient_R_iff Q r s) (and_intro (H1 r) (and_intro (H1 s) H2))
-
----------- recursion
-
-definition quotient_rec {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) {C : B → Type} (f : forall (a : A), C (abs a))
---    (H : forall (r s : A) (H' : R r s),
---        cast (eq_hcongr2 C (quotient_eq_abs Q H')) (f r) = f s)
-    (b : B) : C b
-:= cast (eq_hcongr2 C (quotient_abs_rep Q b)) (f (rep b))
-
-theorem quotient_comp {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) {C : B → Type} (f : forall (a : A), C (abs a))
-    (H1 : forall (r s : A) (H' : R r s),
-        cast (eq_hcongr2 C (quotient_eq_abs Q H')) (f r) = f s)
-    {a : A} (H2 : R a a) : quotient_rec Q f (abs a) = f a
-:=
-  have H3 : abs a = abs (rep (abs a)), from symm (quotient_abs_rep Q (abs a)),
-  have H4 : R a (rep (abs a)),
-    from quotient_R_intro Q H2 (quotient_refl_rep Q (abs a)) H3,
-  calc
-    quotient_rec Q f (abs a) = cast _ (f (rep (abs a))) : refl _
-      ... = cast _ (cast _ (f a)) : {symm (H1 _ _ H4)}
-      ... = cast _ (f a) : cast_trans _ _ _
-      ... = f a : cast_eq _ _
-
-definition quotient_rec2 {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) {C : Type} (f : A → C)
---    (H : forall (r s : A) (H' : R r s), f r = f s)
-    (b : B) : C
-:= f (rep b)
-
-theorem quotient_comp2 {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) {C : Type} (f : A → C)
-    (H1 : forall (r s : A) (H' : R r s), f r = f s)
-    {a : A} (H2 : R a a) : quotient_rec2 Q f (abs a) = f a
-:=
-  have H3 : abs a = abs (rep (abs a)), from symm (quotient_abs_rep Q (abs a)),
-  have H4 : R a (rep (abs a)),
-    from quotient_R_intro Q H2 (quotient_refl_rep Q (abs a)) H3,
-  -- congr2 f (symm (H1 _ _ H4)) -- this gives strange error
-  calc
-    quotient_rec2 Q f (abs a) = f (rep (abs a)) : refl _
-      ... = f a : {symm (H1 _ _ H4)}
-
----------- image
-
-definition image {A B : Type} (f : A → B) := subtype B (fun b, ∃a, f a = b)
-
-theorem image_inhabited {A B : Type} (f : A → B) (H : inhabited A) : inhabited (image f)
-:= inhabited_elim H (take a : A, subtype_inhabited (f a) (exists_intro a (refl (f a))))
-
-theorem image_inhabited2 {A B : Type} (f : A → B) (a : A) : inhabited (image f)
-:= image_inhabited f (inhabited_intro a)
-
-definition fun_image {A B : Type} (f : A → B) (a : A) : image f
-:= abst (f a) (image_inhabited2 f a)
-
-theorem fun_image_def {A B : Type} (f : A → B) (a : A)
-    : fun_image f a = abst (f a) (image_inhabited2 f a)
-:= refl _
-
-theorem rep_fun_image {A B : Type} (f : A → B) (a : A) : rep (fun_image f a) = f a
-:= rep_abst (image_inhabited2 f a) (f a) (exists_intro a (refl (f a)))
-
-theorem image_rep {A B : Type} (f : A → B) (b : image f) : ∃a, f a = rep b
-:= P_rep b
-
-theorem fun_image_eq {A B : Type} (f : A → B) (a b : A)
-    : (f a = f b) ↔ (fun_image f a = fun_image f b)
-:=
-  iff_intro
-    (assume H : f a = f b,
-      have H2 : image_inhabited2 f a = image_inhabited2 f b, from proof_irrel _ _,
-      congr (congr2 abst H) H2)
-    (assume H : fun_image f a = fun_image f b,
-      subst (subst (congr2 rep H) (rep_fun_image f a)) (rep_fun_image f b))
-
----------- construct quotient from representative map
-
-theorem representative_map_idempotent {A : Type} (R : A → A → Bool) {f : A → A}
-    (H1 : ∀a, R a (f a)) (H2 : ∀a b, R a b ↔ R a a ∧ R b b ∧ f a = f b) (a : A)
-    : f (f a) = f a
-:= symm (and_elim_right (and_elim_right (iff_elim_left (H2 a (f a)) (H1 a))))
-
-theorem representative_map_refl_rep {A : Type} (R : A → A → Bool) {f : A → A}
-    (H1 : ∀a, R a (f a)) (H2 : ∀a b, R a b ↔ R a a ∧ R b b ∧ f a = f b) (a : A)
-    : R (f a) (f a)
-:=  subst (H1 (f a)) (representative_map_idempotent R H1 H2 a)
-
--- this theorem fails if it's not given explicitly that "image f" is the "B"
-theorem representative_map_to_quotient {A : Type} {R : A → A → Bool} {f : A → A}
-    (H1 : ∀a, R a (f a)) (H2 : ∀a b, R a b ↔ R a a ∧ R b b ∧ f a = f b)
-    : @is_quotient A (image f) R (fun_image f) rep
-:= let abs := fun_image f in
-  @quotient_intro A (image f) R abs rep
-   (take b : image f,
-      show abs (rep b) = b, from
-       obtain (a : A) (Ha : f a = rep b), from image_rep f b,
-      calc
-        abs (rep b) = abs (f a) : {symm Ha}
-          ... = abst (f a) (image_inhabited2 f (f a)) :
-                          {@representative_map_idempotent A R f H1 H2 a}
-          ... = abst (rep b) (image_inhabited2 f (f a)) : {Ha}
-          ... = b : abst_rep (image_inhabited2 f (f a)) b)
-   (take b : image f,
-     show R (rep b) (rep b), from
-     obtain (a : A) (Ha : f a = rep b), from image_rep f b,
-     subst (@representative_map_refl_rep A R f H1 H2 a) Ha)
-    (take a b, subst (H2 a b) (fun_image_eq f a b))
-
-theorem representative_map_equiv_inj {A : Type} {R : A → A → Bool}
-    (equiv : equivalence R) {f : A → A} (H1 : ∀a, R a (f a)) (H2 : ∀a b, R a b → f a = f b)
-    {a b : A} (H3 : f a = f b) : R a b
-:=
-  have symmR : symmetric R, from and_elim_left (and_elim_right equiv),
-  have transR : transitive R, from and_elim_right (and_elim_right equiv),
-  show R a b, from
-    have H2 : R a (f b), from subst (H1 a) H3,
-    have H3 : R (f b) b, from symmR _ _ (H1 b),
-    transR _ _ _ H2 H3
-
-theorem representative_map_to_quotient_equiv {A : Type} {R : A → A → Bool}
-    (equiv : equivalence R) {f : A → A} (H1 : ∀a, R a (f a)) (H2 : ∀a b, R a b → f a = f b)
-    : @is_quotient A (image f) R (fun_image f) rep
-:=
-  representative_map_to_quotient
-    H1
-    (take a b,
-      have reflR : reflexive R, from and_elim_left equiv,
-      have H3 : f a = f b → R a b, from representative_map_equiv_inj equiv H1 H2,
-      have H4 : R a b ↔ f a = f b, from iff_intro (H2 a b) H3,
-      have H5 : R a b ↔ R b b ∧ f a = f b,
-        from subst H4 (symm (and_inhabited_left _ (reflR b))),
-      subst H5 (symm (and_inhabited_left _ (reflR a))))
-
----------- abstract quotient
-
-definition prelim_quotient_map {A : Type} (R : A → A → Bool) (a : A)
-:= ε (inhabited_intro a) (fun b, R a b)
-
---only needed R reflexive (or weaker: R a a)
-theorem prelim_quotient_map_rel {A : Type} {R : A → A → Bool} (H : equivalence R) (a : A)
-    : R a (prelim_quotient_map R a)
-:=
-  have reflR : reflexive R, from and_elim_left H,
-  eps_ax (inhabited_intro a) a (reflR a)
-
--- only needed: R PER
-theorem prelim_quotient_map_congr {A : Type} {R : A → A → Bool} (H1 : equivalence R) {a b : A}
-    (H2 : R a b) : prelim_quotient_map R a = prelim_quotient_map R b
-:=
-  have symm : symmetric R, from and_elim_left (and_elim_right H1),
-  have trans : transitive R, from and_elim_right (and_elim_right H1),
-  have H3 : ∀c, R a c ↔ R b c, from
-    take c,
-      iff_intro
-        (assume H4 : R a c, trans b a c (symm a b H2) H4)
-        (assume H4 : R b c, trans a b c H2 H4),
-  have H4 : (fun c, R a c) = (fun c, R b c), from funext H3,
-  congr (congr2 ε (proof_irrel (inhabited_intro a) (inhabited_intro b))) H4
-
-definition quotient {A : Type} (R : A → A → Bool) : Type := image (prelim_quotient_map R)
-
-definition quotient_map {A : Type} (R : A → A → Bool) : A → quotient R
-:= fun_image (prelim_quotient_map R)
-
-definition quotient_rep {A : Type} (R : A → A → Bool) : quotient R → A := rep
-
-theorem quotient_is_quotient  {A : Type} (R : A → A → Bool) (H1 : equivalence R)
-    : is_quotient R (quotient_map R) (quotient_rep R)
-:=
-  representative_map_to_quotient_equiv
-    H1
-    (prelim_quotient_map_rel H1)
-    (@prelim_quotient_map_congr _ _ H1)
-
-set_opaque quotient_rec true
-set_opaque is_quotient true
-
-end -- namespace quot
+import quotient
+import macros tactic
 
 -------------------------------------------------- axioms int
-
 
 namespace int
 using nat
 using quot
 using subtype
 unary_nat
+
+---------- rel
 
 definition rel (a b : ℕ ## ℕ) : Bool := xx a + yy b = yy a + xx b
 
@@ -353,6 +54,21 @@ theorem rel_flip {a b : ℕ ## ℕ} (H : rel a b) : rel (flip a) (flip b)
       ... = xx a + yy b : symm H
       ... = xx a + xx (flip b) : {symm (flip_xx b)}
       ... = yy (flip a) + xx (flip b) : {symm (flip_yy a)}
+
+theorem rel_add {a a' b b' : ℕ ## ℕ} (Ha : rel a a') (Hb : rel b b')
+    : rel (map_pair2 add a b) (map_pair2 add a' b')
+:=
+  calc
+    xx (map_pair2 add a b) + yy (map_pair2 add a' b') = xx a + xx b + (yy a' + yy b')
+            : subst (subst (refl _) (map_pair2_xx add a b)) (map_pair2_yy add a' b')
+      ... = xx a + yy a' + (xx b + yy b') : add_switch _ _ _ _
+      ... = yy a + xx a' + (xx b + yy b') : {Ha}
+      ... = yy a + xx a' + (yy b + xx b') : {Hb}
+      ... = yy a + yy b + (xx a' + xx b') : add_switch _ _ _ _
+      ... = yy (map_pair2 add a b) + xx (map_pair2 add a' b')
+            : subst (subst (refl _) (symm (map_pair2_yy add a b))) (symm (map_pair2_xx add a' b'))
+
+---------- proj
 
 definition proj (a : ℕ ## ℕ) : ℕ ## ℕ
 := if xx a ≥ yy a then tpair (xx a - yy a) 0 else tpair 0 (yy a - xx a)
@@ -482,68 +198,375 @@ theorem proj_congr {a b : ℕ ## ℕ} (H : rel a b) : proj a = proj b
 theorem proj_inj {a b : ℕ ## ℕ} (H : proj a = proj b) : rel a b
 := representative_map_equiv_inj rel_equiv proj_rel @proj_congr H
 
+theorem proj_zero_or (a : ℕ ## ℕ) : xx (proj a) = 0 ∨ yy (proj a) = 0
+:=
+  or_elim (le_total (yy a) (xx a))
+    (assume H : yy a ≤ xx a, or_intro_right _ (proj_ge_yy H))
+    (assume H : xx a ≤ yy a, or_intro_left _ (proj_le_xx H))
+
+theorem proj_idempotent (a : ℕ ## ℕ) : proj (proj a) = proj a
+:= representative_map_idempotent_equiv rel proj_rel @proj_congr a
+
+---------- int
+
 definition int := image proj
 alias ℤ : int
 
 --theorem int_inhabited : inhabited int
+--:= subtype_inhabited (proj (tpair 0 0)) (exists_intro (tpair 0 0) (refl _))
+
+definition prod_sub : ℕ ## ℕ → ℤ := fun_image proj
+definition rep : ℤ → ℕ ## ℕ := subtype::rep
+
+--theorem int_inhabited : inhabited int
 --:= image_inhabited2 proj (tpair 0 0)
 
-theorem quotient : @is_quotient _ int rel (fun_image proj) rep -- note: rep is subtype::rep
+theorem quotient : @is_quotient _ int rel prod_sub rep
+:= representative_map_to_quotient_equiv rel_equiv proj_rel @proj_congr
+
+definition nzpos (n : ℕ) : ℤ := prod_sub (tpair n 0)
+definition nzneg (n : ℕ) : ℤ := prod_sub (tpair 0 n)
+coercion nzpos
+
+theorem zero_pos_eq_neg : nzpos 0 = nzneg 0
+:= refl _
+
+theorem cases (a : int) : (exists n : nat, a = n) ∨ (exists n : nat, a = nzneg n)
 :=
-  representative_map_to_quotient_equiv rel_equiv proj_rel @proj_congr
+  have Hv : proj (rep a) = rep a, from @idempotent_image_fix _ proj proj_idempotent a,
+  or_imp_or (or_flip (proj_zero_or (rep a)))
+    (assume H : yy (proj (rep a)) = 0,
+      have H2 : yy (rep a) = 0, from substp (fun x, yy x = 0) H Hv,
+      exists_intro (xx (rep a))
+        (calc
+          a = prod_sub (rep a) : symm (idempotent_image_rep proj_idempotent a)
+            ... = prod_sub (tpair (xx (rep a)) (yy (rep a))) : {symm (tpair_tproj_eq (rep a))}
+            ... = prod_sub (tpair (xx (rep a)) 0) : {H2}
+            ... = nzpos (xx (rep a)) : refl _))
+    (assume H : xx (proj (rep a)) = 0,
+      have H2 : xx (rep a) = 0, from subst H (idempotent_image_fix proj_idempotent a),
+      exists_intro (yy (rep a))
+        (calc
+          a = prod_sub (rep a) : symm (idempotent_image_rep proj_idempotent a)
+            ... = prod_sub (tpair (xx (rep a)) (yy (rep a))) : {symm (tpair_tproj_eq (rep a))}
+            ... = prod_sub (tpair 0 (yy (rep a))) : {H2}
+            ... = nzneg (yy (rep a)) : refl _))
 
-definition pos (n : ℕ) : ℤ := (fun_image proj) (tpair n 0)
-coercion pos
-definition neg (n : ℕ) : ℤ := (fun_image proj) (tpair 0 n)
+set_opaque int true
+set_opaque prod_sub true
+set_opaque proj true
 
---- everything below still needs to be changed
+-------------------------------------------------- arithmetic
 
--- axiom rec {P : ℤ → Type} (f : ∀n : nat, P (pos n)) (g : ∀n : nat, P (neg n)) (z : ℤ) : P z
--- axiom rec_pos {P : ℤ → Type} (f : ∀n : nat, P (pos n))
---     (g : ∀n : nat, P (neg n)) (n : nat) :  rec f g (pos n) = f n
--- axiom rec_neg {P : ℤ → Type} (f : ∀n : nat, P (pos n))
---     (g : ∀n : nat, P (neg n)) (n : nat) :  rec f g (neg n) = g n
+definition neg : ℤ → ℤ := quotient_map quotient flip
+notation 70 - _ : neg
+
+theorem neg_comp (a : ℕ ## ℕ) : -prod_sub a = prod_sub (flip a)
+:= comp_quotient_map quotient @rel_flip (rel_refl a)
 
 
--- -------------------------------------------------- basics
+definition add : ℤ → ℤ → ℤ := quotient_map_binary quotient (map_pair2 nat::add)
+infixl 65 +  : add
 
--- theorem induction {P : ℤ → Bool} (z : ℤ) (Hp : ∀n : nat, P (pos n))
---     (Hn : ∀n : nat, P (neg n)) : P z
--- := rec Hp Hn z
+theorem add_comp (a b : ℕ ## ℕ) : prod_sub a + prod_sub b = prod_sub (map_pair2 nat::add a b)
+:= comp_quotient_map_binary_refl rel_refl quotient @rel_add a b
 
--- theorem pos_ne_neg (n m : nat) : pos n ≠ neg m
--- :=
---   not_intro
---     (take H : pos n = neg m,
---       have H2 : true = false, from
---         (let f : int → Bool := (rec (fun a,true) (fun b, false))
---           in calc
---             true = f (pos n) : symm (rec_pos _ _ _)
---              ... = f (neg m) : {H}
--- 	           ... = false : rec_neg _ _ _),
---       absurd H2 true_ne_false)
+theorem abs_rep_int (a : ℤ) : prod_sub (rep a) = a
+:= abs_rep quotient a
 
--- theorem cases (z : int) : (exists n, z = pos n) ∨ (exists n, z = neg n)
--- :=
---   induction z
---     (take n, or_intro_left _ (exists_intro n (refl _)))
---     (take n, or_intro_right _ (exists_intro n (refl _)))
+add_rewrite abs_rep_int neg_comp add_comp
 
--- theorem discriminate {B : Bool} {z : int} (Hp : ∀n, z = pos n → B)
---     (Hn : ∀n, z = neg n → B) : B
--- :=
---   or_elim (cases z)
---     (take H, obtain (n : nat) (Hz : z = pos n), from H, Hp n Hz)
---     (take H, obtain (n : nat) (Hz : z = neg n), from H, Hn n Hz)
+theorem neg_nzpos (n : ℕ) : -n = nzneg n
+:=
+  calc
+    -nzpos n = prod_sub (flip (tpair n 0)) : neg_comp (tpair n 0)
+      ... = prod_sub (tpair 0 n) : {flip_pair n 0}
+
+theorem neg_nzneg (n : ℕ) : -nzneg n = n
+:=
+  calc
+    -nzneg n = prod_sub (flip (tpair 0 n)) : neg_comp (tpair 0 n)
+      ... = prod_sub (tpair n 0) : {flip_pair 0 n}
+
+theorem neg_zero : -nzpos 0 = 0
+:= trans (neg_nzpos 0) (symm zero_pos_eq_neg)
+
+theorem neg_neg (a : ℤ) : -(-a) = a
+:=
+  calc
+    -(-a) = -(-prod_sub (rep a)) : by simp
+      ... = -prod_sub (flip (rep a)) : {neg_comp (rep a)}
+      ... = prod_sub (flip (flip (rep a))) : {neg_comp (flip (rep a))}
+      ... = prod_sub (rep a) : {flip_flip (rep a)}
+      ... = a : by simp
+
+
+theorem neg_inj {a b : ℤ} (H : -a = -b) : a = b
+:=
+  calc
+    a = -(-a) : symm (neg_neg a)
+      ... = -(-b) : {H}
+      ... = b : neg_neg b
+
+theorem add_comm (a b : ℤ) : a + b = b + a
+:=
+  calc
+    a + b = prod_sub (rep a) + prod_sub (rep b) : by simp
+      ... = prod_sub (map_pair2 nat::add (rep a) (rep b)) : {add_comp (rep a) (rep b)}
+      ... = prod_sub (map_pair2 nat::add (rep b) (rep a))
+              : {map_pair2_comm nat::add_comm (rep a) (rep b)}
+      ... = prod_sub (rep b) + prod_sub (rep a) : {symm (add_comp (rep b) (rep a))}
+      ... = b + a : by simp
+
+theorem add_assoc (a b c : ℤ) : a + b + c = a + (b + c)
+:=
+  calc
+    a + b + c = prod_sub (rep a) + prod_sub (rep b) + prod_sub (rep c) : by simp
+      ... = prod_sub (map_pair2 nat::add (rep a) (rep b)) + prod_sub (rep c)
+              : {add_comp (rep a) (rep b)}
+      ... = prod_sub (map_pair2 nat::add (map_pair2 nat::add (rep a) (rep b)) (rep c))
+              : {add_comp _ (rep c)}
+      ... = prod_sub (map_pair2 nat::add (rep a) (map_pair2 nat::add (rep b) (rep c)))
+              : {map_pair2_assoc nat::add_assoc (rep a) (rep b) (rep c)}
+      ... = prod_sub (rep a) + prod_sub (map_pair2 nat::add (rep b) (rep c))
+              : symm (add_comp (rep a) _)
+      ... = prod_sub (rep a) + (prod_sub (rep b) + prod_sub (rep c))
+              : {symm (add_comp (rep b) (rep c))}
+      ... = a + (b + c) : by simp
+
+theorem add_comm_left (a b c : ℤ) : a + (b + c) = b + (a + c)
+:= left_comm add_comm add_assoc a b c
+
+theorem add_comm_right (a b c : ℤ) : a + b + c = a + c + b
+:= right_comm add_comm add_assoc a b c
+
+theorem add_zero_right (a : ℤ) : a + 0 = a
+:=
+  calc
+    a + 0 = prod_sub (rep a) + prod_sub (tpair 0 0) : {symm (abs_rep_int a)}
+      ... = prod_sub (map_pair2 nat::add (rep a) (tpair 0 0)) : {add_comp (rep a) (tpair 0 0)}
+      ... = prod_sub (rep a) : {map_pair2_id_right nat::add_zero_right (rep a)}
+      ... = a : by simp
+
+theorem add_zero_left (a : ℤ) : 0 + a = a
+:= subst (add_zero_right a) (add_comm a 0)
+
+theorem add_nzpos (n m : ℕ) : nzpos n + nzpos m = n + m -- this is nzpos (n + m)
+:=
+  calc
+    nzpos n + nzpos m = prod_sub (tpair n 0) + prod_sub (tpair m 0) : refl _
+      ... = prod_sub (map_pair2 nat::add (tpair n 0) (tpair m 0))
+              : {add_comp (tpair n 0) (tpair m 0)}
+      ... = prod_sub (tpair (n + m) (0 + 0)) : {map_pair2_pair nat::add n 0 m 0}
+      ... = prod_sub (tpair (n + m) 0) : {nat::add_zero_right 0}
+      ... = n + m : refl (n + m)
+
+theorem add_nzneg (n m : ℕ) : nzneg n + nzneg m = nzneg (n + m)
+:=
+  calc
+    nzneg n + nzneg m = prod_sub (tpair 0 n) + prod_sub (tpair 0 m) : refl _
+      ... = prod_sub (map_pair2 nat::add (tpair 0 n) (tpair 0 m))
+              : {add_comp (tpair 0 n) (tpair 0 m)}
+      ... = prod_sub (tpair (0 + 0) (n + m)) : {map_pair2_pair nat::add 0 n 0 m}
+      ... = prod_sub (tpair 0 (n + m)) : {nat::add_zero_right 0}
+      ... = nzneg (n + m) : refl (nzneg (n + m))
+
+theorem add_inverse_right (a : ℤ) : a + -a = 0
+:=
+  have H1 : ∀v : ℕ ## ℕ, rel (map_pair2 nat::add v (flip v)) (tpair 0 0), from
+    take v : ℕ ## ℕ,
+    calc
+      xx (map_pair2 nat::add v (flip v)) + yy (tpair 0 0) = xx v + yy v : by simp
+        ... = yy v + xx v : nat::add_comm (xx v) (yy v)
+        ... = yy (map_pair2 nat::add v (flip v)) + xx (tpair 0 0) : by simp,
+  have H2 : ∀v : ℕ ## ℕ, prod_sub v + -prod_sub v = 0, from
+    take v : ℕ ## ℕ,
+    calc
+      prod_sub v + -prod_sub v = prod_sub (map_pair2 nat::add v (flip v)) : by simp
+        ... = 0 : eq_abs quotient (H1 v),
+  calc
+    a + -a = prod_sub (rep a) + -prod_sub (rep a) : by simp
+      ... = 0 : H2 (rep a)
+
+theorem add_inverse_left (a : ℤ) : -a + a = 0
+:= subst (add_inverse_right a) (add_comm a (-a))
+
+theorem add_neg_distr (a b : ℤ) : -(a + b) = -a + -b
+:=
+  have H : ∀v w : ℕ ## ℕ, -(prod_sub v + prod_sub w) = -prod_sub v + -prod_sub w, from
+    take v w : ℕ ## ℕ,
+    calc
+      -(prod_sub v + prod_sub w) = prod_sub (flip (map_pair2 nat::add v w)) : by simp
+        ... = prod_sub (map_pair2 nat::add (flip v) (flip w)) : {map_pair2_flip nat::add v w}
+        ... = -prod_sub v + -prod_sub w : by simp,
+  calc
+    -(a + b) = -(prod_sub (rep a) + prod_sub (rep b)) : by simp
+      ... = -prod_sub (rep a) + -prod_sub (rep b) : H (rep a) (rep b)
+      ... = -a + -b : by simp
+
+---------- inversion theorems for add
+theorem add_inj_left {a b c : ℤ} (H : a + b = a + c) : b = c
+:=
+  have lemma : ∀(u v w : ℕ ## ℕ)
+      (K : rel (map_pair2 nat::add u v) (map_pair2 nat::add u w)), rel v w, from
+    take (u v w : ℕ ## ℕ), assume K,
+    have Hlem : xx u + yy u + (xx v + yy w) = xx u + yy u + (yy v + xx w), from
+      calc
+        xx u + yy u + (xx v + yy w) = xx u + xx v + (yy u + yy w) : add_switch _ _ _ _
+          ... = xx (map_pair2 nat::add u v) + (yy u + yy w)
+                  : {symm (map_pair2_xx nat::add u v)}
+          ... = xx (map_pair2 nat::add u v) + yy (map_pair2 nat::add u w)
+                  : {symm (map_pair2_yy nat::add u w)}
+          ... = yy (map_pair2 nat::add u v) + xx (map_pair2 nat::add u w) : K
+          ... = yy u + yy v + xx (map_pair2 nat::add u w) : {map_pair2_yy nat::add u v}
+          ... = yy u + yy v + (xx u + xx w) : {map_pair2_xx nat::add u w}
+          ... = yy u + xx u + (yy v + xx w) : add_switch _ _ _ _
+          ... = xx u + yy u + (yy v + xx w) : {nat::add_comm (yy u) (xx u)},
+    show rel v w, from nat::add_right_inj Hlem,
+  have H2 : prod_sub (map_pair2 nat::add (rep a) (rep b))
+          = prod_sub (map_pair2 nat::add (rep a) (rep c)), from
+    calc
+      prod_sub (map_pair2 nat::add (rep a) (rep b)) = prod_sub (rep a) + prod_sub (rep b)
+                : symm (add_comp (rep a) (rep b))
+        ... = a + b : by simp
+        ... = a + c : H
+        ... = prod_sub (rep a) + prod_sub (rep c) : by simp
+        ... = prod_sub (map_pair2 nat::add (rep a) (rep c)) : add_comp (rep a) (rep c),
+  have H3 : rel (rep b) (rep c),
+    from lemma (rep a) (rep b) (rep c) (R_intro_refl quotient rel_refl H2),
+  show b = c, from rep_eq quotient H3
+
+theorem add_inj_right {a b c : ℤ} (H : a + b = c + b) : a = c
+:= add_inj_left (subst (subst H (add_comm a b)) (add_comm c b))
+
+theorem add_eq_zero_right {a b : ℤ} (H : a + b = 0) : b = -a
+:=
+  have H2 : a + b = a + -a, from subst H (symm (add_inverse_right a)),
+  show b = -a, from add_inj_left H2
+
+theorem add_eq_zero_left {a b : ℤ} (H : a + b = 0) : a = -b
+:=
+  calc
+    a = -(-a) : symm (neg_neg a)
+      ... = -b : {symm (add_eq_zero_right H)}
+
+---------- sub
+definition sub (a b : ℤ) : ℤ := a + - b
+infixl 65 - : sub
+
+theorem add_neg_right (a b : ℤ) : a + -b = a - b
+:= refl (a - b)
+
+theorem add_neg_left (a b : ℤ) : -a + b = b - a
+:= add_comm (-a) b
+
+theorem sub_neg_right (a b : ℤ) : a - (-b) = a + b
+:= subst (refl (a - (-b))) (neg_neg b)
+
+theorem sub_neg_neg (a b : ℤ) : -a - (-b) = b - a
+:= subst (add_comm (-a) (-(-b))) (neg_neg b)
+
+theorem sub_self (a : ℤ) : a - a = 0
+:= add_inverse_right a
+
+theorem sub_zero_right (a : ℤ) : a - nzpos 0 = a
+:= substp (fun x, a + x = a) (add_zero_right a) (symm neg_zero)
+--this doesn't work without explicit P
+
+theorem sub_zero_left (a : ℤ) : 0 - a = -a
+:= add_zero_left (-a)
+
+theorem neg_sub  (a b : ℤ) : -(a - b) = -a + b
+:=
+  calc
+    -(a - b) = -a + -(-b) : add_neg_distr a (-b)
+      ... = -a + b : {neg_neg b}
+
+theorem sub_flip (a b : ℤ) : -(a - b) = b - a
+:=
+  calc
+    -(a - b) = -a + b : neg_sub a b
+      ... = b - a : add_comm (-a) b
+
+--should the following three theorems be reversed?
+theorem sub_add_assoc (a b c : ℤ) : a - (b + c) = a - b - c
+:=
+  calc
+    a - (b + c) = a + (-b + -c) : {add_neg_distr b c}
+      ... = a - b - c : symm (add_assoc a (-b) (-c))
+
+theorem sub_sub_assoc (a b c : ℤ) : a - (b - c) = a - b + c
+:=
+  calc
+    a - (b - c) = a + (-b + c) : {neg_sub b c}
+      ... = a - b + c : symm (add_assoc a (-b) c)
+
+theorem add_sub_assoc (a b c : ℤ) : a + (b - c) = a + b - c
+:= symm (add_assoc a b (-c))
+
+theorem add_sub_inverse (a b : ℤ) : a + b - b = a
+:=
+  calc
+    a + b - b = a + (b - b) : add_assoc a b (-b)
+      ... = a + 0 : {sub_self b}
+      ... = a : add_zero_right a
+
+theorem add_sub_inverse2 (a b : ℤ) : a + b - a = b
+:= subst (add_sub_inverse b a) (add_comm b a)
+
+theorem sub_add_inverse (a b : ℤ) : a - b + b = a
+:= subst (add_sub_inverse a b) (add_comm_right a b (-b))
+
+theorem sub_inj_left {a b c : ℤ} (H : a - b = a - c) : b = c
+:= neg_inj (add_inj_left H)
+
+theorem sub_inj_right {a b c : ℤ} (H : a - b = c - b) : a = c
+:= add_inj_right H
+
+theorem sub_eq_zero {a b : ℤ} (H : a - b = 0) : a = b
+:= trans (add_eq_zero_left H) (neg_neg b)
+
+--should some of the equalities below be reversed?
+theorem add_imp_sub_right {a b c : ℤ} (H : a + b = c) : a = c - b
+:=
+  have H2 : a + b = c - b + b, from trans H (symm (sub_add_inverse c b)),
+  add_inj_right H2
+
+theorem add_imp_sub_left {a b c : ℤ} (H : a + b = c) : b = c - a
+:= add_imp_sub_right (subst H (add_comm a b))
+
+theorem sub_imp_add {a b c : ℤ} (H : a - b = c) : a = c + b
+:= subst (add_imp_sub_right H) (neg_neg b)
+
+theorem sub_imp_sub {a b c : ℤ} (H : a - b = c) : b = a - c
+:= have H2 : a = c + b, from sub_imp_add H, add_imp_sub_left (symm H2)
+
+theorem sub_add_add_right (a b c : ℤ) : a + c - (b + c) = a - b
+:=
+  calc
+    a + c - (b + c) = a + (c - (b + c)) : symm (add_sub_assoc a c (b + c))
+      ... = a + (c - b - c) : {sub_add_assoc c b c}
+      ... = a + -b : {add_sub_inverse2 c (-b)}
+
+theorem sub_add_add_left (a b c : ℤ) : c + a - (c + b) = a - b
+:= subst (subst (sub_add_add_right a b c) (add_comm a c)) (add_comm b c)
+
+
+definition le : ℤ → ℤ → Bool := rec_binary quotient (fun a b, xx a + yy b ≤ yy a + xx b)
+
+
+
+--- everything below still needs to be implemented
 
 -- definition abs (z : int) : nat := rec (fun n : nat, n) (fun n : nat, succ n) z
+
+-- theorem nzpos_ne_nzneg (n m : nat) : nzpos n ≠ nzneg m
+-- :=
 
 -- theorem abs_pos (n:nat) : abs (pos n) = n
 -- := rec_pos _ _ _
 -- theorem abs_neg (n:nat) : abs (neg n) = succ n
 -- := rec_neg _ _ _
-
--- set_opaque abs true
 
 -- theorem pos_inj {n m:nat} (H : pos n = pos m) : n = m
 -- :=
@@ -578,46 +601,10 @@ definition neg (n : ℕ) : ℤ := (fun_image proj) (tpair 0 n)
 --     nz_sub n m = if false then pos (pred (n - m)) else neg (m - n) : {eqf_intro (le_lt_antisym H)}
 --       ... = neg (m - n) : if_false _ _
 
--- definition add (z w : int) : int :=
---   rec
---     (take m : nat, rec
---       (take n : nat, pos (n + m))
---       (take n : nat, nz_sub m n) z)
---     (take m : nat, rec
---       (take n : nat, nz_sub n m)
---       (take n : nat, neg (succ (n + m))) z) w
-
--- infixl 65 + : int::add
-
--- theorem add_pos_pos (n m : nat) : pos n + pos m = pos (n + m)
--- := trans (rec_pos _ _ m) (rec_pos _ _ n)
-
 -- theorem add_pos_neg (n m : nat) : pos n + neg m = nz_sub n m
 -- := trans (rec_neg _ _ m) (rec_pos _ _ n)
 
 -- theorem add_neg_pos (n m : nat) : neg n + pos m = nz_sub m n
 -- := trans (rec_pos _ _ m) (rec_neg _ _ n)
-
--- theorem add_neg_neg (n m : nat) : neg n + neg m = neg (succ (n + m))
--- := trans (rec_neg _ _ m) (rec_neg _ _ n)
-
--- theorem add_comm (a b : int) : a + b = b + a
--- :=
---   induction a
---     (take n, induction b
---       (take m,  calc
---          pos n + pos m = pos (n + m) : add_pos_pos n m
---            ... = pos (m + n) : {add_comm n m}
---            ... = pos m + pos n : symm (add_pos_pos m n))
---       (take m, trans (add_pos_neg n m) (symm (add_neg_pos m n))))
---     (take n, induction b
---       (take m, trans (add_neg_pos n m) (symm (add_pos_neg m n)))
---       (take m, calc
---          neg n + neg m = neg (succ (n + m)) : add_neg_neg n m
---            ... = neg (succ (m + n)) : {add_comm n m}
---            ... = neg m + neg n : symm (add_neg_neg m n)))
-
--- -- theorem add_assoc (a b c : int) : a + b + c = a + (b + c)
--- -- := _
 
 end -- namespace int
