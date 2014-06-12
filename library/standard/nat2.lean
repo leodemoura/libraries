@@ -468,7 +468,7 @@ theorem div_mul_mul {z : ℕ} (x y : ℕ) (zpos : z > 0) : (z * x) div (z * y) =
         (calc
           ((z * x) div (z * y)) * (z * y) + (z * x) mod (z * y) = z * x : symm (div_mod_eq _ _)
             ... = z * (x div y * y + x mod y) : {div_mod_eq _ _}
-            ... = z * (x div y * y) + z * (x mod y) : mul_add_distr_right _ _ _
+            ... = z * (x div y * y) + z * (x mod y) : mul_add_distr_left _ _ _
             ... = (x div y) * (z * y) + z * (x mod y) : {mul_comm_left _ _ _}))
 -- something wrong with the term order
 --            ... = (x div y) * (z * y) + z * (x mod y) : by simp))
@@ -486,7 +486,7 @@ theorem mod_mul_mul {z : ℕ} (x y : ℕ) (zpos : z > 0) : (z * x) mod (z * y) =
         (calc
           ((z * x) div (z * y)) * (z * y) + (z * x) mod (z * y) = z * x : symm (div_mod_eq _ _)
             ... = z * (x div y * y + x mod y) : {div_mod_eq _ _}
-            ... = z * (x div y * y) + z * (x mod y) : mul_add_distr_right _ _ _
+            ... = z * (x div y * y) + z * (x mod y) : mul_add_distr_left _ _ _
             ... = (x div y) * (z * y) + z * (x mod y) : {mul_comm_left _ _ _}))
 
 theorem mod_1 (x : ℕ) : x mod 1 = 0
@@ -524,7 +524,7 @@ theorem mul_eq_imp_dvd {z x y : ℕ} (H : z * y = x) :  y | x
   have H1 : z * y = x mod y + x div y * y, from trans (trans H (div_mod_eq x y)) (add_comm _ _),
   have H2 : (z - x div y) * y = x mod y, from
     calc
-      (z - x div y) * y = z * y - x div y * y : mul_sub_distr_left _ _ _
+      (z - x div y) * y = z * y - x div y * y : mul_sub_distr_right _ _ _
          ... = x mod y + x div y * y - x div y * y : {H1}
          ... = x mod y : sub_add_left _ _,
   show x mod y = 0, from
