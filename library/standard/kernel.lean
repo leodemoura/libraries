@@ -1140,7 +1140,7 @@ theorem tpairext_proj {A B : Type} {p : A ## B} {a : A} {b : B}
 := pairext_proj H1 H2
 
 theorem htpairext_proj {A B : Type} {p : A ## B} {a : A} {b : B}
-                      (H1 : tproj1 p = a) (H2 : tproj2 p = b) : p = (tpair a b)
+                      (H1 : tproj1 p = a) (H2 : tproj2 p == b) : p = (tpair a b)
 := hpairext_proj H1 H2
 
 set_opaque tprod true
