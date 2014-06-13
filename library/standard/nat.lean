@@ -339,7 +339,7 @@ theorem mul_succ_left (n m:nat) : (succ n) * m = (n * m) + m
     (take k IH,
       calc
         succ n * succ k = (succ n * k) + succ n : mul_succ_right _ _
-            ... = (n * k) + k + succ n : { IH }
+            ... = (n * k) + k + succ n : {IH}
             ... = (n * k) + (k + succ n) : add_assoc _ _ _
 --            ... = (n * k) + succ (k + n) : {add_succ_right _ _}
 --            ... = (n * k) + (succ k + n) : {symm (add_succ_left _ _)}
@@ -432,8 +432,8 @@ theorem mul_eq_zero {n m : nat} (H : n * m = 0) : n = 0 ∨ m = 0
           assume (Hl : m = succ l),
           have Heq : succ (k * succ l + l) = n * m, from
             symm (calc
-              n * m = n * succ l : { Hl }
-                ... = succ k * succ l : { Hk }
+              n * m = n * succ l : {Hl}
+                ... = succ k * succ l : {Hk}
                 ... = k * succ l + succ l : mul_succ_left _ _
                 ... = succ (k * succ l + l) : add_succ_right _ _),
           absurd_elim _  (trans Heq H) (succ_ne_zero _)))
@@ -483,7 +483,7 @@ theorem le_trans {n m k : nat} (H1 : n ≤ m) (H2 : m ≤ k) : n ≤ k
   le_intro
     (calc
       n + (l1 + l2) =  n + l1 + l2 : symm (add_assoc n l1 l2)
-        ... = m + l2 : { Hl1 }
+        ... = m + l2 : {Hl1}
         ... = k : Hl2)
 
 theorem le_antisym {n m : nat} (H1 : n ≤ m) (H2 : m ≤ n) : n = m
@@ -493,15 +493,15 @@ theorem le_antisym {n m : nat} (H1 : n ≤ m) (H2 : m ≤ n) : n = m
   have L1 : k + l = 0, from
     add_right_inj
       (calc
-        n + (k + l) = n + k + l : { symm (add_assoc n k l) }
-          ... = m + l : { Hk }
+        n + (k + l) = n + k + l : symm (add_assoc n k l)
+          ... = m + l : {Hk}
           ... = n : Hl
           ... = n + 0 : symm (add_zero_right n)),
   have L2 : k = 0, from add_eq_zero_left L1,
-    calc
-      n = n + 0 : symm (add_zero_right n)
-        ... = n  + k : { symm L2 }
-        ... = m : Hk
+  calc
+    n = n + 0 : symm (add_zero_right n)
+      ... = n  + k : {symm L2}
+      ... = m : Hk
 
 ---------- interaction with add
 
@@ -517,7 +517,7 @@ theorem add_le_left {n m : nat} (H : n ≤ m) (k : nat) : k + n ≤ k + m
   le_intro
     (calc
         k + n + l  = k + (n + l) : add_assoc k n l
-          ... = k + m : { Hl })
+          ... = k + m : {Hl})
 
 theorem add_le_right {n m : nat} (H : n ≤ m) (k : nat) : n + k ≤ m + k
 := subst (subst (add_le_left H k) (add_comm k n)) (add_comm k m)
@@ -1074,12 +1074,12 @@ theorem mul_eq_one_left {n m : nat} (H : n * m = 1) : n = 1
   --     have H2 : 1 = succ (succ (succ (succ l2) * k + l2)),
   --       from calc
   --         1 = n * m : symm H
-  --           ... = n * succ k : { Hm }
-  --           ... = succ l1 * succ k : { Hn }
-  --           ... = succ (succ l2) * succ k : { Hl }
-  --           ... = succ (succ l2) * k + succ (succ l2) : { mul_succ_right _ _ }
+  --           ... = n * succ k : {Hm}
+  --           ... = succ l1 * succ k : {Hn}
+  --           ... = succ (succ l2) * succ k : {Hl}
+  --           ... = succ (succ l2) * k + succ (succ l2) : {mul_succ_right _ _}
   --           ... = succ (succ (succ l2) * k + succ l2): add_succ_right _ _
-  --           ... = succ (succ (succ (succ l2) * k + l2)) : { add_succ_right _ _ },
+  --           ... = succ (succ (succ (succ l2) * k + l2)) : {add_succ_right _ _},
   --       have H3 : 0 = succ (succ (succ l2) * k + l2), from succ_inj H2,
   --       absurd_elim _ (symm H3) (succ_ne_zero _))
 
@@ -1358,10 +1358,95 @@ theorem sub_eq_zero_imp_le {n m : nat} : n - m = 0 → n ≤ m
       have H3 : n = m, from subst (subst H1 H2) (add_zero_right m),
       subst (le_refl n) H3)
 
+theorem nat_sub_sub_split {P : nat → nat → Bool} {n m : nat} (H1 : ∀k, n = m + k -> P k 0)
+    (H2 : ∀k, m = n + k → P 0 k) : P (n - m) (m - n)
+:=
+  or_elim (le_total n m)
+    (assume H3 : n ≤ m, subst (H2 (m - n) (symm (add_sub_right H3))) (symm (le_imp_sub_eq_zero H3)))
+    (assume H3 : m ≤ n, subst (H1 (n - m) (symm (add_sub_right H3))) (symm (le_imp_sub_eq_zero H3)))
 
+theorem sub_intro {n m k : ℕ} (H : n + m = k) : k - n = m
+:=
+  have H2 : k - n + n = m + n, from
+    calc
+      k - n + n = k : add_sub_left (le_intro H)
+        ... = n + m : symm H
+        ... = m + n : add_comm n m,
+  add_left_inj H2
 
--------------------------------------------------- max, min, iteration, maybe: sub, div
+-------------------------------------------------- max, min, iteration, maybe: div
 -- n - m + m = max n m
+
+--absolute difference between n and m
+--this section is still incomplete, it is only added to define the absolute value of an integer
+definition sub_abs (n m : ℕ) := (n - m) + (m - n)
+
+theorem sub_abs_comm (n m : ℕ) : sub_abs n m = sub_abs m n
+:= add_comm (n - m) (m - n)
+
+theorem sub_abs_le {n m : ℕ} (H : n ≤ m) : sub_abs n m = m - n
+:=
+  calc
+    sub_abs n m = 0 + (m - n) : {le_imp_sub_eq_zero H}
+      ... = m - n : add_zero_left (m - n)
+
+theorem sub_abs_ge {n m : ℕ} (H : n ≥ m) : sub_abs n m = n - m
+:= subst (sub_abs_le H) (sub_abs_comm m n)
+
+theorem sub_abs_zero_right (n : ℕ) : sub_abs n 0 = n
+:= trans (sub_abs_ge (le_zero n)) (sub_zero_right n)
+
+theorem sub_abs_zero_left (n : ℕ) : sub_abs 0 n = n
+:= trans (sub_abs_le (le_zero n)) (sub_zero_right n)
+
+theorem sub_abs_intro {n m k : ℕ} (H : n + m = k) : sub_abs k n = m
+:=
+  calc
+    sub_abs k n = k - n : sub_abs_ge (le_intro H)
+      ... = m : sub_intro H
+
+theorem sub_abs_add_right (n m k : ℕ) : sub_abs (n + k) (m + k) = sub_abs n m
+:=
+  calc
+    sub_abs (n + k) (m + k) = n - m + ((m + k) - (n + k)) : {sub_add_add_right n m k}
+      ... = n - m + (m - n) : {sub_add_add_right m n k}
+
+theorem sub_abs_ge_add_right {n m : ℕ} (H : n ≥ m) : sub_abs n m + m = n
+:=
+  calc
+    sub_abs n m + m = n - m + m : {sub_abs_ge H}
+      ... = n : add_sub_left H
+
+theorem sub_abs_add_left (n m k : ℕ) : sub_abs (k + n) (k + m) = sub_abs n m
+:= subst (subst (sub_abs_add_right n m k) (add_comm n k)) (add_comm m k)
+
+theorem sub_abs_eq {n m k l : ℕ} (H : n + m = k + l) : sub_abs n k = sub_abs l m
+:=
+  have special : ∀n m k l, n + m = k + l → m ≤ l → sub_abs n k = sub_abs l m,
+    from
+      take n m k l,
+      assume H : n + m = k + l,
+      assume H2 : m ≤ l,
+      have H3 : k + sub_abs l m + m = n + m, from
+        calc
+          k + sub_abs l m + m = k + (sub_abs l m + m) : add_assoc _ _ _
+            ... = k + l : {sub_abs_ge_add_right H2}
+            ... = n + m : symm H,
+      have H4 : k + sub_abs l m = n, from add_left_inj H3,
+      sub_abs_intro H4,
+  or_elim (le_total m l)
+    (assume H2 : m ≤ l, special n m k l H H2)
+    (assume H2 : l ≤ m,
+      have H3 : sub_abs k n = sub_abs m l, from special k l n m (symm H) H2,
+      trans (sub_abs_comm n k) (trans H3 (sub_abs_comm m l)))
+
+
+
+  -- subst (subst (refl (((n + k) - (m + k)) + ((m + k) - (n + k))))
+  --   (sub_add_add_right n m k)) (sub_add_add_right m n k)
+
+
+
 
 
 end --namespace nat

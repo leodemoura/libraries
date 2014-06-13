@@ -347,9 +347,8 @@ theorem comp_binary {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B
     rec_binary Q f (abs a) (abs b) = f (rep (abs a))  (rep (abs b)) : refl _
       ... = f a b : {symm (H _ _ _ _ H2 H3)}
 
-theorem comp_binary_refl {A B : Type} {R : A → A → Bool} (Hrefl : reflexive R)
-    {abs : A → B} {rep : B → A}
-    (Q : is_quotient R abs rep) {C : Type} {f : A → A → C}
+theorem comp_binary_refl {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
+    (Q : is_quotient R abs rep) (Hrefl : reflexive R) {C : Type} {f : A → A → C}
     (H : forall (a a' b b' : A) (Ha : R a a') (Hb : R b b'), f a b = f a' b')
     (a b : A) : rec_binary Q f (abs a) (abs b) = f a b
 := comp_binary Q H (Hrefl a) (Hrefl b)
