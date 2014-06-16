@@ -589,18 +589,13 @@ theorem succ_le_right_inv {n m : nat} (H : n ≤ succ m) : n ≤ m ∨ n = succ 
 
 theorem succ_le_left_inv {n m : nat} (H : succ n ≤ m) : n ≤ m ∧ n ≠ m
 :=
-  obtain (k : nat) (H2 : succ n + k = m), from (le_elim H),
   and_intro
-    (have H3 : n + succ k = m,
-      from calc
-        n + succ k = succ n + k : symm (add_move_succ n k)
-          ... = m : H2,
-      show n ≤ m, from le_intro H3)
+    (le_trans (le_self_succ n) H)
     (not_intro
-      (assume H3 : n = m,
-        have H4 : succ n ≤ n, from subst H (symm H3),
-        have H5 : succ n = n, from le_antisym H4 (le_self_succ n),
-        show false, from absurd H5 (succ_ne_self n)))
+      (assume H2 : n = m,
+        have H3 : succ n ≤ n, from subst H (symm H2),
+        have H4 : succ n = n, from le_antisym H3 (le_self_succ n),
+        show false, from absurd H4 (succ_ne_self n)))
 
 theorem le_pred_self (n : nat) : pred n ≤ n
 :=

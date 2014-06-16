@@ -5,9 +5,7 @@
 -- Author: Floris van Doorn
 ----------------------------------------------------------------------------------------------------
 
-import nat
-import quotient
-import macros tactic
+import nat quotient macros tactic
 
 -------------------------------------------------- axioms int
 
@@ -16,6 +14,16 @@ using nat
 using quot
 using subtype
 unary_nat
+
+add_rewrite succ_ne_zero
+add_rewrite add_zero_left add_zero_right
+add_rewrite add_succ_left add_succ_right
+add_rewrite add_comm add_assoc add_comm_left
+add_rewrite le_add_right le_add_left
+
+add_rewrite mul_zero_left mul_zero_right
+add_rewrite mul_succ_left mul_succ_right
+add_rewrite mul_comm mul_assoc mul_comm_left
 
 ---------- rel
 
@@ -221,6 +229,9 @@ definition rep : ℤ → ℕ ## ℕ := subtype::rep
 theorem quotient : @is_quotient (ℕ ## ℕ) ℤ rel prod_sub rep
 := representative_map_to_quotient_equiv rel_equiv proj_rel @proj_congr
 
+theorem abs_rep_int (a : ℤ) : prod_sub (rep a) = a
+:= abs_rep quotient a
+
 definition nzpos (n : ℕ) : ℤ := prod_sub (tpair n 0)
 definition nzneg (n : ℕ) : ℤ := prod_sub (tpair 0 n)
 coercion nzpos
@@ -308,7 +319,7 @@ set_opaque modulus true
 -------------------------------------------------- arithmetic
 
 definition neg : ℤ → ℤ := quotient_map quotient flip
-notation 70 - _ : neg
+notation 75 - _ : neg --what is the value in Isabelle?
 
 theorem neg_comp (a : ℕ ## ℕ) : -prod_sub a = prod_sub (flip a)
 := comp_quotient_map quotient @rel_flip (rel_refl a)
@@ -320,15 +331,12 @@ infixl 65 +  : add
 theorem add_comp (a b : ℕ ## ℕ) : prod_sub a + prod_sub b = prod_sub (map_pair2 nat::add a b)
 := comp_quotient_map_binary_refl rel_refl quotient @rel_add a b
 
-theorem abs_rep_int (a : ℤ) : prod_sub (rep a) = a
-:= abs_rep quotient a
-
 add_rewrite abs_rep_int neg_comp add_comp
 
 theorem neg_nzpos (n : ℕ) : -n = nzneg n
 :=
   calc
-    -nzpos n = prod_sub (flip (tpair n 0)) : neg_comp (tpair n 0)
+    -n = prod_sub (flip (tpair n 0)) : neg_comp (tpair n 0)
       ... = prod_sub (tpair 0 n) : {flip_pair n 0}
 
 theorem neg_nzneg (n : ℕ) : -nzneg n = n
@@ -399,26 +407,6 @@ theorem add_zero_right (a : ℤ) : a + 0 = a
 
 theorem add_zero_left (a : ℤ) : 0 + a = a
 := subst (add_zero_right a) (add_comm a 0)
-
-theorem add_nzpos (n m : ℕ) : nzpos n + nzpos m = n + m -- this is nzpos (n + m)
-:=
-  calc
-    nzpos n + nzpos m = prod_sub (tpair n 0) + prod_sub (tpair m 0) : refl _
-      ... = prod_sub (map_pair2 nat::add (tpair n 0) (tpair m 0))
-              : {add_comp (tpair n 0) (tpair m 0)}
-      ... = prod_sub (tpair (n + m) (0 + 0)) : {map_pair2_pair nat::add n 0 m 0}
-      ... = prod_sub (tpair (n + m) 0) : {nat::add_zero_right 0}
-      ... = n + m : refl (n + m)
-
-theorem add_nzneg (n m : ℕ) : nzneg n + nzneg m = nzneg (n + m)
-:=
-  calc
-    nzneg n + nzneg m = prod_sub (tpair 0 n) + prod_sub (tpair 0 m) : refl _
-      ... = prod_sub (map_pair2 nat::add (tpair 0 n) (tpair 0 m))
-              : {add_comp (tpair 0 n) (tpair 0 m)}
-      ... = prod_sub (tpair (0 + 0) (n + m)) : {map_pair2_pair nat::add 0 n 0 m}
-      ... = prod_sub (tpair 0 (n + m)) : {nat::add_zero_right 0}
-      ... = nzneg (n + m) : refl (nzneg (n + m))
 
 theorem add_inverse_right (a : ℤ) : a + -a = 0
 :=
@@ -518,7 +506,7 @@ theorem sub_neg_neg (a b : ℤ) : -a - (-b) = b - a
 theorem sub_self (a : ℤ) : a - a = 0
 := add_inverse_right a
 
-theorem sub_zero_right (a : ℤ) : a - nzpos 0 = a
+theorem sub_zero_right (a : ℤ) : a - 0 = a
 := substp (fun x, a + x = a) (add_zero_right a) (symm neg_zero)
 --this doesn't work without explicit P
 
@@ -600,7 +588,140 @@ theorem sub_add_add_right (a b c : ℤ) : a + c - (b + c) = a - b
 theorem sub_add_add_left (a b c : ℤ) : c + a - (c + b) = a - b
 := subst (subst (sub_add_add_right a b c) (add_comm a c)) (add_comm b c)
 
+-- more about nzpos, nzneg
 
+add_rewrite add_comp
+
+theorem add_nzpos (n m : ℕ) : nzpos n + nzpos m = n + m -- this is nzpos (n + m)
+:=
+  calc
+    nzpos n + nzpos m = prod_sub (tpair n 0) + prod_sub (tpair m 0) : refl _
+      ... = prod_sub (map_pair2 nat::add (tpair n 0) (tpair m 0)) : by simp
+      ... = prod_sub (tpair (n + m) (0 + 0)) : {map_pair2_pair nat::add n 0 m 0}
+      ... = prod_sub (tpair (n + m) 0) : {nat::add_zero_right 0}
+      ... = n + m : refl (n + m)
+
+theorem add_nzneg (n m : ℕ) : nzneg n + nzneg m = nzneg (n + m)
+:=
+  calc
+    nzneg n + nzneg m = prod_sub (tpair 0 n) + prod_sub (tpair 0 m) : refl _
+      ... = prod_sub (map_pair2 nat::add (tpair 0 n) (tpair 0 m)) : by simp
+      ... = prod_sub (tpair (0 + 0) (n + m)) : {map_pair2_pair nat::add 0 n 0 m}
+      ... = prod_sub (tpair 0 (n + m)) : {nat::add_zero_right 0}
+      ... = nzneg (n + m) : refl (nzneg (n + m))
+
+add_rewrite neg_neg neg_nzpos neg_nzneg add_nzpos add_nzneg add_one
+
+theorem nzpos_succ (n : ℕ) : nzpos (succ n) = nzpos n + 1
+:= by simp
+  -- calc
+  --   nzpos (succ n) = n + 1 : {symm (add_one n)}
+  --     ... = nzpos n + 1 : symm (add_nzpos n 1)
+
+theorem nzneg_succ (n : ℕ) : nzneg (succ n) = nzneg n - 1
+:=
+  calc
+    nzneg (succ n) = nzneg n + nzneg 1 : by simp
+      ... = nzneg n + - 1 : by simp
+
+add_rewrite add_zero_left add_zero_right
+add_rewrite add_comm add_assoc add_comm_left
+add_rewrite mul_add_distr_right mul_add_distr_left
+
+-------------------------------------------------- mul
+
+theorem test {xa ya xb yb xn yn xm ym p q r s : ℕ} :
+ xa * p + yb * p + (ya * q + xb * q) + (r * xn + r * ym + (s * yn + s * xm))
+  = (xa + yb) * p + (ya + xb) * q + (r * (xn + ym) + s * (yn + xm))
+:= by simp
+
+theorem rel_mul_prep {xa ya xb yb xn yn xm ym : ℕ} (H1 : xa + yb = ya + xb) (H2 : xn + ym = yn + xm)
+  : xa * xn + ya * yn + (xb * ym + yb * xm) = xa * yn + ya * xn + (xb * xm + yb * ym)
+:=
+ have H3 : xa * xn + ya * yn + (xb * ym + yb * xm) + (yb * xn + xb * yn + (xb * xn + yb * yn))
+         = xa * yn + ya * xn + (xb * xm + yb * ym) + (yb * xn + xb * yn + (xb * xn + yb * yn)), from
+ calc xa * xn + ya * yn + (xb * ym + yb * xm) + (yb * xn + xb * yn + (xb * xn + yb * yn))
+    = xa * xn + yb * xn + (ya * yn + xb * yn) + (xb * xn + xb * ym + (yb * yn + yb * xm)) : by simp
+... = (xa + yb) * xn + (ya + xb) * yn + (xb * (xn + ym) + yb * (yn + xm)) : test
+... = (ya + xb) * xn + (xa + yb) * yn + (xb * (yn + xm) + yb * (xn + ym)) : by simp
+... = ya * xn + xb * xn + (xa * yn + yb * yn) + (xb * yn + xb * xm + (yb*xn + yb*ym)) : symm (test)
+... = xa * yn + ya * xn + (xb * xm + yb * ym) + (yb * xn + xb * yn + (xb * xn + yb * yn)) : by simp,
+ nat::add_left_inj H3
+
+theorem rel_mul {u u' v v' : ℕ ## ℕ} (H1 : rel u u') (H2 : rel v v')
+    : rel (tpair (xx u * xx v + yy u * yy v) (xx u * yy v + yy u * xx v))
+          (tpair (xx u' * xx v' + yy u' * yy v') (xx u' * yy v' + yy u' * xx v'))
+:=
+  calc
+      xx (tpair (xx u * xx v + yy u * yy v) (xx u * yy v + yy u * xx v))
+    + yy (tpair (xx u' * xx v' + yy u' * yy v') (xx u' * yy v' + yy u' * xx v'))
+    = (xx u * xx v + yy u * yy v) + (xx u' * yy v' + yy u' * xx v') : by simp
+... = (xx u * yy v + yy u * xx v) + (xx u' * xx v' + yy u' * yy v') : rel_mul_prep H1 H2
+... = yy (tpair (xx u * xx v + yy u * yy v) (xx u * yy v + yy u * xx v))
+    + xx (tpair (xx u' * xx v' + yy u' * yy v') (xx u' * yy v' + yy u' * xx v')) : by simp
+
+definition mul : ℤ → ℤ → ℤ := quotient_map_binary quotient
+    (fun u v : ℕ ## ℕ, tpair (xx u * xx v + yy u * yy v) (xx u * yy v + yy u * xx v))
+infixl 70 *  : mul
+
+theorem mul_comp (u v : ℕ ## ℕ) : prod_sub u * prod_sub v =
+    prod_sub (tpair (xx u * xx v + yy u * yy v) (xx u * yy v + yy u * xx v))
+:= comp_quotient_map_binary_refl rel_refl quotient @rel_mul u v
+
+---------- comm, distr, assoc, identity
+
+-- theorem mul_comm (n m:ℤ) : n * m = m * n
+-- :=
+--   _
+
+-- theorem mul_zero_right (n:ℤ) : n * 0 = 0
+-- :=
+--   _
+
+-- theorem mul_zero_left (n:ℤ) : 0 * n = 0
+-- := _
+
+-- theorem mul_add_distr_right (n m k : ℤ) : (n + m) * k = n * k + m * k
+-- :=
+--   _
+
+-- theorem mul_add_distr_left (n m k : ℤ) : n * (m + k) = n * m + n * k
+-- := _
+
+-- theorem mul_assoc (n m k:ℤ) : (n * m) * k = n * (m * k)
+-- :=
+--   _
+
+-- theorem mul_comm_left (n m k : ℤ) : n * (m * k) = m * (n * k)
+-- := left_comm mul_comm mul_assoc n m k
+
+-- theorem mul_comm_right (n m k : ℤ) : n * m * k = n * k * m
+-- := right_comm mul_comm mul_assoc n m k
+
+-- theorem mul_one_right (n : ℤ) : n * 1 = n
+-- :=
+--   calc
+--     n * 1 = n * 0 + n : mul_succ_right n 0
+--       ... = 0 + n : {mul_zero_right n}
+--       ... = n : add_zero_left n
+
+-- theorem mul_one_left (n : ℤ) : 1 * n = n
+-- :=
+--   calc
+--     1 * n = n * 1 : mul_comm _ _
+--       ... = n : mul_one_right n
+
+-- ---------- inversion
+
+-- theorem mul_eq_zero {n m : ℤ} (H : n * m = 0) : n = 0 ∨ m = 0
+-- :=
+--   _
+
+
+add_rewrite mul_zero_left mul_zero_right
+add_rewrite mul_comm mul_assoc
+
+---------- le
 definition le (a b : ℤ) : Bool := ∃n : ℕ, a + n = b
 infix  50 <= : le
 infix  50 ≤  : le
@@ -633,8 +754,6 @@ theorem le_intro {a b : ℤ} {n : ℕ} (H : a + n = b) : a ≤ b
 
 theorem le_elim {a b : ℤ} (H : a ≤ b) : ∃n : ℕ, a + n = b
 := H
-
-set_opaque le true
 
 ---------- partial order (totality is part of lt)
 
@@ -731,111 +850,90 @@ theorem add_le_inv {a b c d : ℤ} (H1 : a + b ≤ c + d) (H2 : c ≤ a) : b ≤
   have H4 : n + b ≤ d, from add_le_left_inv H3,
   show b ≤ d, from le_trans (le_add_nzpos_left b n) H4
 
--- ---------- interaction with succ and pred
+theorem le_add_nzpos_right_trans {a b : ℤ} (H : a ≤ b) (n : ℕ) : a ≤ b + n
+:= le_trans H (le_add_nzpos_right b n)
 
--- theorem succ_le {n m : ℤ} (H : n ≤ m) : succ n ≤ succ m
--- := subst (subst (add_le_right H 1) (add_one n)) (add_one m)
+theorem le_split {a b : ℤ} (H : a ≤ b) : a + 1 ≤ b ∨ a = b
+:=
+  obtain (n : ℕ) (Hn : a + n = b), from le_elim H,
+  nat_discriminate
+    (assume H2 : n = 0,
+      have H3 : a = b, from
+        calc
+          a = a + 0 : symm (add_zero_right a)
+            ... = a + n : {symm H2}
+            ... = b : Hn,
+      or_intro_right _ H3)
+    (take k : ℕ,
+      assume H2 : n = succ k,
+      have H3 : a + 1 + k = b, from
+        calc
+          a + 1 + k = a + succ k : by simp
+            ... = a + n : by simp
+            ... = b : Hn,
+      or_intro_left _ (le_intro H3))
 
--- theorem succ_le_inv {n m : ℤ} (H : succ n ≤ succ m) :  n ≤ m
--- := add_le_right_inv (subst (subst H (symm (add_one n))) (symm (add_one m)))
-
--- theorem le_self_succ (n : ℤ) : n ≤ succ n
--- := le_intro (add_one n)
-
--- theorem succ_le_right {n m : ℤ} (H : n ≤ m) : n ≤ succ m
--- := le_trans H (le_self_succ m)
-
--- theorem succ_le_left_or {n m : ℤ} (H : n ≤ m) : succ n ≤ m ∨ n = m
+-- theorem test3 {a b n k : ℤ} (H1 : n = k + 1) (H2 : b = a + n) : a + (k + 1) = b
 -- :=
---   obtain (k : ℤ) (Hk : n + k = m), from (le_elim H),
---   ℤ_discrimiℤe
---     (assume H3 : k = 0,
---       have Heq : n = m,
---         from calc
---           n = n + 0 : symm (add_zero_right n)
---             ... = n + k : {symm H3}
---             ... = m : Hk,
---       or_intro_right _ Heq)
---     (take l:ℤ,
---       assume H3 : k = succ l,
---       have Hlt : succ n ≤ m, from
---         (le_intro
---           (calc
---             succ n + l = n + succ l : add_move_succ n l
---               ... = n + k : {symm H3}
---               ... = m : Hk)),
---       or_intro_left _ Hlt)
+--   calc
+--     a + (k + 1) = a + n : by simp
+--       ... = b : by simp
 
--- theorem succ_le_left {n m : ℤ} (H1 : n ≤ m) (H2 : n ≠ m) : succ n ≤ m
--- := resolve_left (succ_le_left_or H1) H2
-
--- theorem succ_le_right_inv {n m : ℤ} (H : n ≤ succ m) : n ≤ m ∨ n = succ m
+-- theorem test2 {a b n k : ℤ} (H1 : n = k + 1) (H2 : a + n = b) : a + (k + 1) = b
 -- :=
---   or_imp_or (succ_le_left_or H)
---     (take H2 : succ n ≤ succ m, show n ≤ m, from succ_le_inv H2)
---     (take H2 : n = succ m, H2)
+--   calc
+--     a + (k + 1) = a + n : by simp
+--       ... = b : by simp
 
--- theorem succ_le_left_inv {n m : ℤ} (H : succ n ≤ m) : n ≤ m ∧ n ≠ m
+-- theorem test {a b : ℤ} {n k : ℕ} (H1 : n = succ k) (H2 : a + n = b) : a + succ k = b
 -- :=
---   obtain (k : ℤ) (H2 : succ n + k = m), from (le_elim H),
---   and_intro
---     (have H3 : n + succ k = m,
---       from calc
---         n + succ k = succ n + k : symm (add_move_succ n k)
---           ... = m : H2,
---       show n ≤ m, from le_intro H3)
---     (not_intro
---       (assume H3 : n = m,
---         have H4 : succ n ≤ n, from subst H (symm H3),
---         have H5 : succ n = n, from le_antisym H4 (le_self_succ n),
---         show false, from absurd H5 (succ_ne_self n)))
+--   calc
+--     a + succ k = a + n : by simp
+--       ... = b : by simp
 
--- theorem le_pred_self (n : ℤ) : pred n ≤ n
--- :=
---   ℤ_case n
---     (subst (le_refl 0) (symm pred_zero))
---     (take k : ℤ, subst (le_self_succ k) (symm (pred_succ k)))
+---------- interaction with neg and sub
 
--- theorem pred_le {n m : ℤ} (H : n ≤ m) : pred n ≤ pred m
--- :=
---   ℤ_discrimiℤe
---     (take Hn : n = 0,
---       have H2 : pred n = 0,
---         from calc
---           pred n = pred 0 : {Hn}
---              ... = 0 : pred_zero,
---       subst (le_zero (pred m)) (symm H2))
---     (take k : ℤ,
---       assume Hn : n = succ k,
---       obtain (l : ℤ) (Hl : n + l = m), from le_elim H,
---       have H2 : pred n + l = pred m,
---         from calc
---           pred n + l = pred (succ k) + l : {Hn}
---             ... = k + l : {pred_succ k}
---             ... = pred (succ (k + l)) : symm (pred_succ (k + l))
---             ... = pred (succ k + l) : {symm (add_succ_left k l)}
---             ... = pred (n + l) : {symm Hn}
---             ... = pred m : {Hl},
---       le_intro H2)
+theorem le_neg {a b : ℤ} (H : a ≤ b) : -b ≤ -a
+:=
+  obtain (n : ℕ) (Hn : a + n = b), from le_elim H,
+  have H2 : b - n = a, from symm (add_imp_sub_right Hn),
+  have H3 : -b + n = -a, from
+    calc
+      -b + n = -b + -(-n) : {symm (neg_neg n)}
+        ... = -(b - n) : symm (add_neg_distr b (-n))
+        ... = -a : {H2},
+  le_intro H3
+
+theorem le_neg_inv {a b : ℤ} (H : -a ≤ -b) : b ≤ a
+:= subst (subst (le_neg H) (neg_neg a)) (neg_neg b)
+
+theorem le_nzneg (n m : ℕ) : (n ≤ m) ↔ (nzneg m ≤ nzneg n)
+:=
+  calc
+    (n ≤ m) = (nzpos n ≤ nzpos m) : le_nzpos n m
+      ... = (-nzpos m ≤ -nzpos n) : iff_intro (take H, le_neg H) (take H, le_neg_inv H)
+      ... = (nzneg m ≤ -nzpos n) : {neg_nzpos m}
+      ... = (nzneg m ≤ nzneg n) : {neg_nzpos n}
+
+theorem le_sub_nzpos (a : ℤ) (n : ℕ) : a - n ≤ a
+:= le_intro (sub_add_inverse a n)
+
+theorem sub_le_right {a b : ℤ} (H : a ≤ b) (c : ℤ) : a - c ≤ b - c
+:= add_le_right H (-c)
+
+theorem sub_le_left {a b : ℤ} (H : a ≤ b) (c : ℤ) : c - b ≤ c - a
+:= add_le_left (le_neg H) c
+
+theorem sub_le {a b c d : ℤ} (H1 : a ≤ b) (H2 : d ≤ c) : a - c ≤ b - d
+:= add_le H1 (le_neg H2)
+
+theorem sub_le_right_inv {a b c : ℤ} (H : a - c ≤ b - c) : a ≤ b
+:= add_le_right_inv H
+
+theorem sub_le_left_inv {a b c : ℤ} (H : c - a ≤ c - b) : b ≤ a
+:= le_neg_inv (add_le_left_inv H)
 
 
--- theorem pred_le_left_inv {n m : ℤ} (H : pred n ≤ m) : n ≤ m ∨ n = succ m
--- :=
---   ℤ_discrimiℤe
---     (take Hn : n = 0,
---       or_intro_left _ (subst (le_zero m) (symm Hn)))
---     (take k : ℤ,
---       assume Hn : n = succ k,
---       have H2 : pred n = k,
---         from calc
---           pred n = pred (succ k) : {Hn}
---              ... = k : pred_succ k,
---       have H3 : k ≤ m, from subst H H2,
---       have H4 : succ k ≤ m ∨ k = m, from succ_le_left_or H3,
---       show n ≤ m ∨ n = succ m, from
---         or_imp_or H4
---           (take H5 : succ k ≤ m, show n ≤ m, from subst H5 (symm Hn))
---           (take H5 : k = m, show n = succ m, from subst Hn H5))
 
 -- ---------- interaction with mul
 
@@ -859,5 +957,12 @@ theorem add_le_inv {a b c d : ℤ} (H1 : a + b ≤ c + d) (H2 : c ≤ a) : b ≤
 
 -- theorem mul_le {n m k l : ℤ} (H1 : n ≤ k) (H2 : m ≤ l) : n * m ≤ k * l
 -- := le_trans (mul_le_right H1 m) (mul_le_left H2 k)
+
+
+set_opaque neg true
+set_opaque add true
+set_opaque mul true
+set_opaque le true
+--transparent: sub
 
 end -- namespace int
