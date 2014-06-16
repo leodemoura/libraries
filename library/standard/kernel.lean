@@ -327,7 +327,6 @@ theorem ne_to_not_eq {A : (Type U)} {a b : A} : a ≠ b ↔ ¬ a = b
 add_rewrite eq_id iff_id ne_to_not_eq
 
 -- Remark: ordered rewriting + assoc + comm + left_comm sorts a term lexicographically
--- Suggestion: rename to comm_left / comm_right
 theorem left_comm {A : (Type U)} {R : A -> A -> A} (comm : ∀ x y, R x y = R y x)
     (assoc : ∀ x y z, R (R x y) z = R x (R y z)) : ∀ x y z, R x (R y z) = R y (R x z)
 := take x y z, calc R x (R y z) = R (R x y) z : symm (assoc x y z)
@@ -379,7 +378,6 @@ theorem or_true_right (a : Bool) : a ∨ true ↔ true
 theorem or_tauto (a : Bool) : a ∨ ¬ a ↔ true
 := eqt_intro (em a)
 
---suggestion: rename to or_comm_left
 theorem or_left_comm (a b c : Bool) : a ∨ (b ∨ c) ↔ b ∨ (a ∨ c)
 := left_comm or_comm or_assoc a b c
 
@@ -446,7 +444,6 @@ theorem and_absurd (a : Bool) : a ∧ ¬ a ↔ false
 := boolext (assume H, absurd (and_elim_left H) (and_elim_right H))
            (assume H, false_elim (a ∧ ¬ a) H)
 
---suggestion: rename to and_comm_left
 theorem and_left_comm (a b c : Bool) : a ∧ (b ∧ c) ↔ b ∧ (a ∧ c)
 := left_comm and_comm and_assoc a b c
 

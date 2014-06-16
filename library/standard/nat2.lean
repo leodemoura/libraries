@@ -1,11 +1,10 @@
 ----------------------------------------------------------------------------------------------------
--- Copyright (c) 2014 Jeremy Avigad. All rights reserved.
--- Released under Apache 2.0 license as described in the file LICENSE.
--- Author: Jeremy Avigad
---
--- This will ultimately be merged with nat.lean.
---
+--- Copyright (c) 2014 Jeremy Avigad. All rights reserved.
+--- Released under Apache 2.0 license as described in the file LICENSE.
+--- Author: Jeremy Avigad
 ----------------------------------------------------------------------------------------------------
+
+-- This will ultimately be merged with nat.lean.
 
 import kernel
 import macros
@@ -22,27 +21,11 @@ namespace nat
 -- some stuff for nat
 -- ==================
 
--- suggestions:
---
--- zero_lt ~~> succ_lt_zero
--- le_zero ~~> zero_le
--- add_left_inj ~~> add_left_cancel etc.
-
-add_rewrite succ_ne_zero
-add_rewrite add_zero_left add_zero_right
-add_rewrite add_succ_left add_succ_right
-add_rewrite add_comm add_assoc add_comm_left
-add_rewrite le_add_right le_add_left
-
-add_rewrite mul_zero_left mul_zero_right
-add_rewrite mul_succ_left mul_succ_right
-add_rewrite mul_comm mul_assoc mul_comm_left
+-- (moved add_rewrite to nat.lean)
 
 check mul_assoc
-check mul_comm_right
-check mul_comm_left
-
-add_rewrite sub_add_left
+check mul_right_comm
+check mul_left_comm
 
 theorem add_simp_test (x y z w : ℕ) : (x + w) + (z + y) = z + (y + x) + w
 := by simp
@@ -50,44 +33,26 @@ theorem add_simp_test (x y z w : ℕ) : (x + w) + (z + y) = z + (y + x) + w
 theorem add_simp_test2 (x y z w : ℕ) : z * y + x * w = w * x + y * z
 := by simp
 
-theorem complete_induction_on {P : nat → Bool} (a : nat)
-    (H : ∀(n : nat), (∀m, m < n → P m) → P n) : P a
-:=
-  have H1 : ∀n, ∀m, m < n → P m, from
-    take n,
-    induction_on n
-      (show ∀m, m < 0 → P m, from take m H, absurd_elim _ H (lt_zero_inv _))
-      (take n',
-        assume IH : ∀m, m < n' → P m,
-        have H2: P n', from H n' IH,
-        show ∀m, m < succ n' → P m, from
-          take m,
-          assume H3 : m < succ n',
-          or_elim (le_lt_or (lt_succ_le H3))
-            (assume H4: m < n', IH _ H4)
-            (assume H4: m = n', subst H2 (symm H4))),
-  H1 _ _ (self_lt_succ a)
-
-theorem complete_induction'_on {P : nat → Bool} (a : nat) (H0 : P 0)
+theorem case_strong_induction_on {P : nat → Bool} (a : nat) (H0 : P 0)
     (Hind : ∀(n : nat), (∀m, m ≤ n → P m) → P (succ n)) : P a
 :=
-  complete_induction_on a (
+  strong_induction_on a (
     take n,
     show (∀m, m < n → P m) → P n, from
-      nat_case n
+      case n
          (assume H : (∀m, m < 0 → P m), show P 0, from H0)
          (take n,
            assume H : (∀m, m < succ n → P m),
            show P (succ n), from
-             Hind n (take m, assume H1 : m ≤ n, H _ (le_lt_succ H1))))
+             Hind n (take m, assume H1 : m ≤ n, H _ (le_imp_lt_succ H1))))
 
-theorem nat_case' {P : ℕ → Bool} (y : ℕ) (H0 : P 0) (H1 : ∀y, y > 0 → P y) : P y
-:= nat_case y H0 (take y', H1 _ (lt_zero _))
+theorem case' {P : ℕ → Bool} (y : ℕ) (H0 : P 0) (H1 : ∀y, y > 0 → P y) : P y
+:= case y H0 (take y', H1 _ (succ_pos _))
 
 theorem sub_lt {x y : ℕ} (xpos : x > 0) (ypos : y > 0) : x - y < x
 :=
-  obtain (x' : ℕ) (xeq : x = succ x'), from positive_succ xpos,
-  obtain (y' : ℕ) (yeq : y = succ y'), from positive_succ ypos,
+  obtain (x' : ℕ) (xeq : x = succ x'), from pos_imp_eq_succ xpos,
+  obtain (y' : ℕ) (yeq : y = succ y'), from pos_imp_eq_succ ypos,
   have xsuby_eq : x - y = x' - y', from
     calc
       x - y = succ x' - y : {xeq}
@@ -135,7 +100,7 @@ theorem restrict_not_lt_eq {dom codom : Type} (default : codom) (measure : dom �
 
 definition rec_measure_aux {dom codom : Type} (default : codom) (measure : dom → ℕ)
     (rec_val : dom → (dom → codom) → codom) : ℕ → dom → codom
-:= nat_rec (λx, default) (λm g x, if measure x < succ m then rec_val x g else default)
+:= rec (λx, default) (λm g x, if measure x < succ m then rec_val x g else default)
 
 definition rec_measure {dom codom : Type} (default : codom) (measure : dom → ℕ)
     (rec_val : dom → (dom → codom) → codom) (x : dom) : codom
@@ -152,12 +117,12 @@ theorem rec_measure_aux_spec {dom codom : Type} (default : codom) (measure : dom
 :=
   let f' := rec_measure_aux default measure rec_val in
   let f := rec_measure default measure rec_val in
-  complete_induction'_on m
-    (have H1 : f' 0 = (λx, default), from nat_rec_zero _ _,
+  case_strong_induction_on m
+    (have H1 : f' 0 = (λx, default), from rec_zero _ _,
       have H2 : restrict default measure f 0 = (λx, default), from
         funext
           (take x,
-            have H3: ¬ measure x < 0, from lt_zero_inv _,
+            have H3: ¬ measure x < 0, from not_lt_zero _,
             show restrict default measure f 0 x = default, from not_imp_if_eq H3 _ _),
       show f' 0 = restrict default measure f 0, from trans H1 (symm H2))
     (take m,
@@ -170,19 +135,19 @@ theorem rec_measure_aux_spec {dom codom : Type} (default : codom) (measure : dom
                 have H2 : f' (succ m) x = rec_val x f, from
                   calc
                     f' (succ m) x = if measure x < succ m then rec_val x (f' m) else default :
-                        congr1 (nat_rec_succ _ _ _) x
+                        congr1 (rec_succ _ _ _) x
                       ... = rec_val x (f' m) : imp_if_eq H1 _ _
                       ... = rec_val x (restrict default measure f m) : {IH m (le_refl m)}
-                      ... = rec_val x f : symm (rec_decreasing _ _ _ (lt_succ_le H1)),
+                      ... = rec_val x f : symm (rec_decreasing _ _ _ (lt_succ_imp_le H1)),
                 have H3 : restrict default measure f (succ m) x = rec_val x f, from
                   let m' := measure x in
                   calc
                     restrict default measure f (succ m) x = f x : imp_if_eq H1 _ _
                       ... = f' (succ m') x : refl _
                       ... = if measure x < succ m' then rec_val x (f' m') else default :
-                          congr1 (nat_rec_succ _ _ _) x
+                          congr1 (rec_succ _ _ _) x
                       ... = rec_val x (f' m') : imp_if_eq (self_lt_succ _) _ _
-                      ... = rec_val x (restrict default measure f m') : {IH m' (lt_succ_le H1)}
+                      ... = rec_val x (restrict default measure f m') : {IH m' (lt_succ_imp_le H1)}
                       ... = rec_val x f : symm (rec_decreasing _ _ _ (le_refl _)),
                 show f' (succ m) x = restrict default measure f (succ m) x,
                   from trans H2 (symm H3))
@@ -190,7 +155,7 @@ theorem rec_measure_aux_spec {dom codom : Type} (default : codom) (measure : dom
                 have H2 : f' (succ m) x = default, from
                   calc
                     f' (succ m) x = if measure x < succ m then rec_val x (f' m) else default :
-                        congr1 (nat_rec_succ _ _ _) x
+                        congr1 (rec_succ _ _ _) x
                       ... = default : not_imp_if_eq H1 _ _,
                 have H3 : restrict default measure f (succ m) x = default,
                   from not_imp_if_eq H1 _ _,
@@ -211,7 +176,7 @@ theorem rec_measure_spec {dom codom : Type} {default : codom} {measure : dom →
   calc
     f x = f' (succ m) x : refl _
       ... = if measure x < succ m then rec_val x (f' m) else default :
-                          congr1 (nat_rec_succ _ _ _) x
+                          congr1 (rec_succ _ _ _) x
       ... = rec_val x (f' m) : imp_if_eq (self_lt_succ _) _ _
       ... = rec_val x (restrict default measure f m) : {rec_measure_aux_spec _ _ _ rec_decreasing _}
       ... = rec_val x f : symm (rec_decreasing _ _ _ (le_refl _))
@@ -242,7 +207,7 @@ theorem div_aux_decreasing (y : ℕ) (g : ℕ → ℕ) (m : ℕ) (x : ℕ) (H : 
             ... = rhs : symm (imp_if_eq H1 _ _))
       (assume H1 : ¬ (y = 0 ∨ x < y),
         have H2 : y ≠ 0 ∧ ¬ x < y, from not_or _ _ ◂ H1,
-        have ypos : y > 0, from ne_zero_positive (and_elim_left H2),
+        have ypos : y > 0, from ne_zero_pos (and_elim_left H2),
         have xgey : x ≥ y, from not_lt_imp_le (and_elim_right H2),
         have H4 : x - y < x, from sub_lt (lt_le_trans ypos xgey) ypos,
         have H5 : x - y < m, from lt_le_trans H4 H,
@@ -266,7 +231,7 @@ theorem div_less {x y : ℕ} (H : x < y) : x div y = 0
 := trans (div_aux_spec _ _) (imp_if_eq (or_intro_right _ H) _ _)
 
 theorem zero_div (y : ℕ) : 0 div y = 0
-:= nat_case y (div_zero 0) (take y', div_less (lt_zero _))
+:= case y (div_zero 0) (take y', div_less (succ_pos _))
 
 theorem div_rec {x y : ℕ} (H1 : y > 0) (H2 : x ≥ y) : x div y = succ ((x - y) div y)
 :=
@@ -275,7 +240,7 @@ theorem div_rec {x y : ℕ} (H1 : y > 0) (H2 : x ≥ y) : x div y = succ ((x - y
       (assume H4 : y = 0 ∨ x < y,
         or_elim H4
           (assume H5 : y = 0, not_elim (lt_irrefl _) (subst H1 H5))
-          (assume H5 : x < y, not_elim (lt_le_antisym H5) H2)),
+          (assume H5 : x < y, not_elim (lt_imp_not_le H5) H2)),
   trans (div_aux_spec _ _) (not_imp_if_eq H3 _ _)
 
 add_rewrite div_zero div_less zero_div
@@ -319,7 +284,7 @@ theorem mod_aux_decreasing (y : ℕ) (g : ℕ → ℕ) (m : ℕ) (x : ℕ) (H : 
             ... = rhs : symm (imp_if_eq H1 _ _))
       (assume H1 : ¬ (y = 0 ∨ x < y),
         have H2 : y ≠ 0 ∧ ¬ x < y, from not_or _ _ ◂ H1,
-        have ypos : y > 0, from ne_zero_positive (and_elim_left H2),
+        have ypos : y > 0, from ne_zero_pos (and_elim_left H2),
         have xgey : x ≥ y, from not_lt_imp_le (and_elim_right H2),
         have H4 : x - y < x, from sub_lt (lt_le_trans ypos xgey) ypos,
         have H5 : x - y < m, from lt_le_trans H4 H,
@@ -343,7 +308,7 @@ theorem mod_less {x y : ℕ} (H : x < y) : x mod y = x
 := trans (mod_aux_spec _ _) (imp_if_eq (or_intro_right _ H) _ _)
 
 theorem zero_mod (y : ℕ) : 0 mod y = 0
-:= nat_case y (mod_zero 0) (take y', mod_less (lt_zero _))
+:= case y (mod_zero 0) (take y', mod_less (succ_pos _))
 
 theorem mod_rec {x y : ℕ} (H1 : y > 0) (H2 : x ≥ y) : x mod y = (x - y) mod y
 :=
@@ -352,7 +317,7 @@ theorem mod_rec {x y : ℕ} (H1 : y > 0) (H2 : x ≥ y) : x mod y = (x - y) mod 
       (assume H4 : y = 0 ∨ x < y,
         or_elim H4
           (assume H5 : y = 0, not_elim (lt_irrefl _) (subst H1 H5))
-          (assume H5 : x < y, not_elim (lt_le_antisym H5) H2)),
+          (assume H5 : x < y, not_elim (lt_imp_not_le H5) H2)),
   trans (mod_aux_spec _ _) (not_imp_if_eq H3 _ _)
 
 theorem mod_add_self (x : ℕ) {z : ℕ} (H : z > 0) : (x + z) mod z = x mod z
@@ -378,7 +343,7 @@ add_rewrite mod_zero mod_less zero_mod
 
 theorem mod_lt (x : ℕ) {y : ℕ} (H : y > 0) : x mod y < y
 :=
-  complete_induction'_on x
+  case_strong_induction_on x
     (show 0 mod y < y, from subst H (symm (zero_mod _)))
     (take x,
       assume IH : ∀x', x' ≤ x → x' mod y < y,
@@ -390,13 +355,13 @@ theorem mod_lt (x : ℕ) {y : ℕ} (H : y > 0) : x mod y < y
           (assume H1 : ¬ succ x < y,
             have H2 : y ≤ succ x, from not_lt_imp_le H1,
             have H3 : succ x mod y = (succ x - y) mod y, from mod_rec H H2,
-            have H4 : succ x - y < succ x, from sub_lt (lt_zero _) H,
-            have H5 : succ x - y ≤ x, from lt_succ_le H4,
+            have H4 : succ x - y < succ x, from sub_lt (succ_pos _) H,
+            have H5 : succ x - y ≤ x, from lt_succ_imp_le H4,
             show succ x mod y < y, from subst (IH _ H5) (symm H3)))
 
 theorem div_mod_eq (x y : ℕ) : x = x div y * y + x mod y
 :=
-  nat_case' y
+  case' y
     (show x = x div 0 * 0 + x mod 0, from
       symm (calc
         x div 0 * 0 + x mod 0 = 0 + x mod 0 : {mul_zero_right _}
@@ -405,7 +370,7 @@ theorem div_mod_eq (x y : ℕ) : x = x div y * y + x mod y
     (take y,
       assume H : y > 0,
       show x = x div y * y + x mod y, from
-        complete_induction'_on x
+        case_strong_induction_on x
           (show 0 = (0 div y) * y + 0 mod y, by simp)
           (take x,
             assume IH : ∀x', x' ≤ x → x' = x' div y * y + x' mod y,
@@ -419,14 +384,14 @@ theorem div_mod_eq (x y : ℕ) : x = x div y * y + x mod y
                   have H2 : y ≤ succ x, from not_lt_imp_le H1,
                   have H3 : succ x div y = succ ((succ x - y) div y), from div_rec H H2,
                   have H4 : succ x mod y = (succ x - y) mod y, from mod_rec H H2,
-                  have H5 : succ x - y < succ x, from sub_lt (lt_zero _) H,
-                  have H6 : succ x - y ≤ x, from lt_succ_le H5,
+                  have H5 : succ x - y < succ x, from sub_lt (succ_pos _) H,
+                  have H6 : succ x - y ≤ x, from lt_succ_imp_le H5,
                   symm (calc
                     succ x div y * y + succ x mod y = succ ((succ x - y) div y) * y + succ x mod y :
                         {H3}
                       ... = ((succ x - y) div y) * y + y + succ x mod y : {mul_succ_left _ _}
                       ... = ((succ x - y) div y) * y + y + (succ x - y) mod y : {H4}
-                      ... = ((succ x - y) div y) * y + (succ x - y) mod y + y : add_comm_right _ _ _
+                      ... = ((succ x - y) div y) * y + (succ x - y) mod y + y : add_right_comm _ _ _
                       ... = succ x - y + y : {symm (IH _ H6)}
                       ... = succ x : add_sub_left H2))))
 
@@ -451,25 +416,25 @@ theorem quotient_unique {y : ℕ} (H : y > 0) {q1 r1 q2 r2 : ℕ} (H1 : r1 < y) 
     (H3 : q1 * y + r1 = q2 * y + r2) : q1 = q2
 :=
   have H4 : q1 * y + r2 = q2 * y + r2, from subst H3 (remainder_unique H H1 H2 H3),
-  have H5 : q1 * y = q2 * y, from add_left_inj H4,
-  have H6 : y > 0, from le_lt_trans (le_zero _) H1,
-  show q1 = q2, from mul_right_inj H6 H5
+  have H5 : q1 * y = q2 * y, from add_cancel_right H4,
+  have H6 : y > 0, from le_lt_trans (zero_le _) H1,
+  show q1 = q2, from mul_cancel_right H6 H5
 
 theorem div_mul_mul {z : ℕ} (x y : ℕ) (zpos : z > 0) : (z * x) div (z * y) = x div y
 :=
   by_cases (y = 0)
     (assume H : y = 0, by simp)
     (assume H : y ≠ 0,
-      have ypos : y > 0, from ne_zero_positive H,
-      have zypos : z * y > 0, from mul_positive zpos ypos,
+      have ypos : y > 0, from ne_zero_pos H,
+      have zypos : z * y > 0, from mul_pos zpos ypos,
       have H1 : (z * x) mod (z * y) < z * y, from mod_lt _ zypos,
       have H2 : z * (x mod y) < z * y, from mul_lt_left zpos (mod_lt _ ypos),
       quotient_unique zypos H1 H2
         (calc
           ((z * x) div (z * y)) * (z * y) + (z * x) mod (z * y) = z * x : symm (div_mod_eq _ _)
             ... = z * (x div y * y + x mod y) : {div_mod_eq _ _}
-            ... = z * (x div y * y) + z * (x mod y) : mul_add_distr_left _ _ _
-            ... = (x div y) * (z * y) + z * (x mod y) : {mul_comm_left _ _ _}))
+            ... = z * (x div y * y) + z * (x mod y) : mul_distr_left _ _ _
+            ... = (x div y) * (z * y) + z * (x mod y) : {mul_left_comm _ _ _}))
 -- something wrong with the term order
 --            ... = (x div y) * (z * y) + z * (x mod y) : by simp))
 
@@ -478,21 +443,21 @@ theorem mod_mul_mul {z : ℕ} (x y : ℕ) (zpos : z > 0) : (z * x) mod (z * y) =
   by_cases (y = 0)
     (assume H : y = 0, by simp)
     (assume H : y ≠ 0,
-      have ypos : y > 0, from ne_zero_positive H,
-      have zypos : z * y > 0, from mul_positive zpos ypos,
+      have ypos : y > 0, from ne_zero_pos H,
+      have zypos : z * y > 0, from mul_pos zpos ypos,
       have H1 : (z * x) mod (z * y) < z * y, from mod_lt _ zypos,
       have H2 : z * (x mod y) < z * y, from mul_lt_left zpos (mod_lt _ ypos),
       remainder_unique zypos H1 H2
         (calc
           ((z * x) div (z * y)) * (z * y) + (z * x) mod (z * y) = z * x : symm (div_mod_eq _ _)
             ... = z * (x div y * y + x mod y) : {div_mod_eq _ _}
-            ... = z * (x div y * y) + z * (x mod y) : mul_add_distr_left _ _ _
-            ... = (x div y) * (z * y) + z * (x mod y) : {mul_comm_left _ _ _}))
+            ... = z * (x div y * y) + z * (x mod y) : mul_distr_left _ _ _
+            ... = (x div y) * (z * y) + z * (x mod y) : {mul_left_comm _ _ _}))
 
 theorem mod_1 (x : ℕ) : x mod 1 = 0
 :=
-  have H1 : x mod 1 < 1, from mod_lt _ (lt_zero 0),
-  le_zero_inv (lt_succ_le H1)
+  have H1 : x mod 1 < 1, from mod_lt _ (succ_pos 0),
+  le_zero (lt_succ_imp_le H1)
 
 add_rewrite mod_1
 
@@ -540,11 +505,11 @@ theorem mul_eq_imp_dvd {z x y : ℕ} (H : z * y = x) :  y | x
             ... = x : mod_zero _
             ... = 0 : xz)
       (assume ynz : y ≠ 0,
-        have ypos : y > 0, from ne_zero_positive ynz,
+        have ypos : y > 0, from ne_zero_pos ynz,
         have H3 : (z - x div y) * y < y, from subst (mod_lt x ypos) (symm H2),
         have H4 : (z - x div y) * y < 1 * y, from subst H3 (symm (mul_one_left y)),
-        have H5 : z - x div y < 1, from mul_lt_right_inv H4,
-        have H6 : z - x div y = 0, from le_zero_inv (lt_succ_le H5),
+        have H5 : z - x div y < 1, from mul_lt_cancel_right H4,
+        have H6 : z - x div y = 0, from le_zero (lt_succ_imp_le H5),
         calc
           x mod y = (z - x div y) * y : symm H2
             ... = 0 * y : {H6}
@@ -590,7 +555,7 @@ theorem gcd_aux_decreasing (g : ℕ ## ℕ → ℕ) (m : ℕ) (p : ℕ ## ℕ) (
           lhs = x : imp_if_eq H1 _ _
             ... = rhs : symm (imp_if_eq H1 _ _))
       (assume H1 : y ≠ 0,
-        have ypos : y > 0, from ne_zero_positive H1,
+        have ypos : y > 0, from ne_zero_pos H1,
         have H2 : gcd_aux_measure p' = x mod y, from tproj2_tpair _ _,
         have H3 : gcd_aux_measure p' < gcd_aux_measure p, from subst (mod_lt _ ypos) (symm H2),
         have H4: gcd_aux_measure p' < m, from lt_le_trans H3 H,
@@ -622,4 +587,4 @@ theorem gcd_zero (x : ℕ) : gcd x 0 = x
 add_rewrite gcd_zero
 
 theorem gcd_zero_left (x : ℕ) : gcd 0 x = x
-:= nat_case x (by simp) (take x, trans (gcd_def _ _) (by simp))
+:= case x (by simp) (take x, trans (gcd_def _ _) (by simp))

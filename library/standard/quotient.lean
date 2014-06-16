@@ -1,3 +1,8 @@
+----------------------------------------------------------------------------------------------------
+-- Copyright (c) 2014 Floris van Doorn. All rights reserved.
+-- Released under Apache 2.0 license as described in the file LICENSE.
+-- Author: Floris van Doorn
+----------------------------------------------------------------------------------------------------
 
 import macros tactic
 import subtype
@@ -16,14 +21,18 @@ theorem and_inhabited_left {a : Bool} (b : Bool) (H : a) : a ∧ b ↔ b
 -- relations
 
 definition reflexive {A : Type} (R : A → A → Bool) : Bool := ∀a, R a a
-definition transitive {A : Type} (R : A → A → Bool) : Bool := ∀a b c, R a b → R b c → R a c
 definition symmetric {A : Type} (R : A → A → Bool) : Bool := ∀a b, R a b → R b a
-definition equivalence {A : Type} (R : A → A → Bool) : Bool
-:= reflexive R ∧ symmetric R ∧ transitive R
+definition transitive {A : Type} (R : A → A → Bool) : Bool := ∀a b c, R a b → R b c → R a c
 definition PER {A : Type} (R : A → A → Bool) : Bool := symmetric R ∧ transitive R
+definition equivalence {A : Type} (R : A → A → Bool) : Bool
+:= reflexive R ∧ PER R
+
+theorem equivalence_intro {A : Type} {R : A → A → Bool} (H1 : reflexive R) (H2 : symmetric R)
+    (H3 : transitive R) : equivalence R
+:= and_intro H1 (and_intro H2 H3)
 
 theorem equiv_imp_PER {A : Type} {R : A → A → Bool} (H : equivalence R) : PER R
-:= and_intro (and_elim_left (and_elim_right H)) (and_elim_right (and_elim_right H))
+:= and_elim_right H
 
 
 -- pairs
@@ -556,13 +565,13 @@ definition quotient_abs {A : Type} (R : A → A → Bool) : A → quotient R
 
 definition quotient_rep {A : Type} (R : A → A → Bool) : quotient R → A := rep
 
-theorem quotient_is_quotient  {A : Type} (R : A → A → Bool) (H1 : equivalence R)
+theorem quotient_is_quotient  {A : Type} (R : A → A → Bool) (H : equivalence R)
     : is_quotient R (quotient_abs R) (quotient_rep R)
 :=
   representative_map_to_quotient_equiv
-    H1
-    (prelim_map_rel H1)
-    (@prelim_map_congr _ _ H1)
+    H
+    (prelim_map_rel H)
+    (@prelim_map_congr _ _ H)
 
 set_opaque fun_image true
 set_opaque rec true
