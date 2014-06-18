@@ -1,0 +1,73 @@
+#!/usr/bin/lua
+----------------------------------------------------------------------------------------------------
+-- Copyright (c) 2014 Jeremy Avigad. All rights reserved.
+-- Released under Apache 2.0 license as described in the file LICENSE.
+-- Author: Jeremy Avigad
+--
+-- usage:   ./makedoc input [output]
+--
+-- Assumes lua is found in /usr/bin. If output is absent, uses stdout. Comments beginning with
+-- "---" are ignored, as well as blocks between "--(" and "--)". Ordinary comments are
+-- displayed as markdown, and code is displayed in code blocks. Definitions are ommitted, from
+-- the occurrence of ":=" at the beginning of a line to the next blank line.
+--
+-- example: makedoc my_theory.lean docs/my_theory.md
+--
+----------------------------------------------------------------------------------------------------
+
+io.input(arg[1])
+if arg[2] == nil then
+   io.output(stdout)
+else
+   io.output(arg[2])
+end
+
+line = io.read("*line")
+while line ~= nil do
+   if string.sub(line, 1, 3) == "---" then
+      -- ignore comment; read the next line
+      line = io.read("*line")
+   elseif string.sub(line, 1, 3) == "--(" then
+      -- ignore block
+      repeat
+        line = io.read("*line")
+      until line == nil or string.sub(line, 1, 3) == "--)"
+      if line ~= nil then line = io.read("*line") end
+   elseif string.sub(line, 1, 2) == "--" then
+      -- ordinary comment - render as markdown text
+      if string.sub(line, 3, 3) == " " then
+	 io.write(string.sub(line, 4, -1), "\n")
+      else
+         io.write(string.sub(line, 3, -1), "\n")
+      end
+      line = io.read("*line")
+   elseif not string.find(line, "%S") then
+      -- blank line
+      io.write("\n")
+      line = io.read("*line")
+   else
+      -- a block of code
+      io.write("```lean\n")
+      repeat
+	 if string.sub(line, 1, 2) == ":=" then
+	    -- skip definition block
+            repeat
+	       line = io.read("*line")
+	    until line == nil or not string.find(line, "%S")
+      	 elseif string.sub(line, 1, 3) == "---" then
+            -- ignore comment; read the next line
+      	    line = io.read("*line")
+   	 elseif string.sub(line, 1, 3) == "--(" then
+      	    -- ignore block
+            repeat
+              line = io.read("*line")
+            until line == nil or string.sub(line, 1, 3) == "--)"
+            if line ~= nil then line = io.read("*line") end
+	 else
+	    io.write(line, "\n")
+            line = io.read("*line")
+	 end
+      until line == nil or (string.sub(line, 1, 2) == "--" and string.sub(line, 1, 3) ~= "---")
+      io.write("```\n\n")
+   end
+end

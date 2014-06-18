@@ -4,7 +4,11 @@
 --- Author: Jeremy Avigad
 ----------------------------------------------------------------------------------------------------
 
--- This will ultimately be merged with nat.lean.
+-- Theory nat2
+-- ===========
+--
+-- This is a continuation of the development of the natural numbers, with a general way of
+-- defining recursive functions, and definitions of div, mod, and gcd.
 
 import kernel
 import macros
@@ -16,51 +20,6 @@ using nat
 unary_nat
 
 namespace nat
-
-
--- some stuff for nat
--- ==================
-
--- (moved add_rewrite to nat.lean)
-
-check mul_assoc
-check mul_right_comm
-check mul_left_comm
-
-theorem add_simp_test (x y z w : ℕ) : (x + w) + (z + y) = z + (y + x) + w
-:= by simp
-
-theorem add_simp_test2 (x y z w : ℕ) : z * y + x * w = w * x + y * z
-:= by simp
-
-theorem case_strong_induction_on {P : nat → Bool} (a : nat) (H0 : P 0)
-    (Hind : ∀(n : nat), (∀m, m ≤ n → P m) → P (succ n)) : P a
-:=
-  strong_induction_on a (
-    take n,
-    show (∀m, m < n → P m) → P n, from
-      case n
-         (assume H : (∀m, m < 0 → P m), show P 0, from H0)
-         (take n,
-           assume H : (∀m, m < succ n → P m),
-           show P (succ n), from
-             Hind n (take m, assume H1 : m ≤ n, H _ (le_imp_lt_succ H1))))
-
-theorem case' {P : ℕ → Bool} (y : ℕ) (H0 : P 0) (H1 : ∀y, y > 0 → P y) : P y
-:= case y H0 (take y', H1 _ (succ_pos _))
-
-theorem sub_lt {x y : ℕ} (xpos : x > 0) (ypos : y > 0) : x - y < x
-:=
-  obtain (x' : ℕ) (xeq : x = succ x'), from pos_imp_eq_succ xpos,
-  obtain (y' : ℕ) (yeq : y = succ y'), from pos_imp_eq_succ ypos,
-  have xsuby_eq : x - y = x' - y', from
-    calc
-      x - y = succ x' - y : {xeq}
-        ... = succ x' - succ y' : {yeq}
-        ... = x' - y' : sub_succ_succ _ _,
-  have H1 : x' - y' ≤ x', from sub_le_self _ _,
-  have H2 : x' < succ x', from self_lt_succ _,
-  show x - y < x, from subst (subst (le_lt_trans H1 H2) (symm xsuby_eq)) (symm xeq)
 
 
 -- A general recursion principle
@@ -182,13 +141,12 @@ theorem rec_measure_spec {dom codom : Type} {default : codom} {measure : dom →
       ... = rec_val x f : symm (rec_decreasing _ _ _ (le_refl _))
 
 
--- div and mod
--- ===========
+-- Div and mod
+-- -----------
 
--- the definition of div
--- ---------------------
+-- ### the definition of div
 
--- for fixed y, recursive call for x div y
+  -- for fixed y, recursive call for x div y
 definition div_aux_rec (y : ℕ) (x : ℕ) (div_aux' : ℕ → ℕ) : ℕ
 := if (y = 0 ∨ x < y) then 0 else succ (div_aux' (x - y))
 
@@ -262,10 +220,9 @@ theorem div_add_mul_self (x y : ℕ) {z : ℕ} (H : z > 0) : (x + y * z) div z =
           ... = x div z + succ y : by simp)
 
 
--- the definition of mod
--- ---------------------
+-- ### The definition of mod
 
--- for fixed y, recursive call for x mod y
+  -- for fixed y, recursive call for x mod y
 definition mod_aux_rec (y : ℕ) (x : ℕ) (mod_aux' : ℕ → ℕ) : ℕ
 := if (y = 0 ∨ x < y) then x else mod_aux' (x - y)
 
@@ -338,8 +295,7 @@ theorem mod_add_mul_self (x y : ℕ) {z : ℕ} (H : z > 0) : (x + y * z) mod z =
 
 add_rewrite mod_zero mod_less zero_mod
 
--- properties of div and mod together
--- ----------------------------------
+-- ### properties of div and mod together
 
 theorem mod_lt (x : ℕ) {y : ℕ} (H : y > 0) : x mod y < y
 :=
@@ -361,7 +317,7 @@ theorem mod_lt (x : ℕ) {y : ℕ} (H : y > 0) : x mod y < y
 
 theorem div_mod_eq (x y : ℕ) : x = x div y * y + x mod y
 :=
-  case' y
+  case_zero_pos y
     (show x = x div 0 * 0 + x mod 0, from
       symm (calc
         x div 0 * 0 + x mod 0 = 0 + x mod 0 : {mul_zero_right _}
@@ -398,9 +354,7 @@ theorem div_mod_eq (x y : ℕ) : x = x div y * y + x mod y
 theorem mod_le (x y : ℕ) : x mod y ≤ x
 := subst (le_add_left (x mod y) _) (symm (div_mod_eq _ _))
 
-axiom sorry {P : Bool} : P
-
--- a good example where simplifying using the context causes problems
+--- a good example where simplifying using the context causes problems
 theorem remainder_unique {y : ℕ} (H : y > 0) {q1 r1 q2 r2 : ℕ} (H1 : r1 < y) (H2 : r2 < y)
     (H3 : q1 * y + r1 = q2 * y + r2) : r1 = r2
 :=
@@ -435,8 +389,8 @@ theorem div_mul_mul {z : ℕ} (x y : ℕ) (zpos : z > 0) : (z * x) div (z * y) =
             ... = z * (x div y * y + x mod y) : {div_mod_eq _ _}
             ... = z * (x div y * y) + z * (x mod y) : mul_distr_left _ _ _
             ... = (x div y) * (z * y) + z * (x mod y) : {mul_left_comm _ _ _}))
--- something wrong with the term order
---            ... = (x div y) * (z * y) + z * (x mod y) : by simp))
+--- something wrong with the term order
+---            ... = (x div y) * (z * y) + z * (x mod y) : by simp))
 
 theorem mod_mul_mul {z : ℕ} (x y : ℕ) (zpos : z > 0) : (z * x) mod (z * y) = z * (x mod y)
 :=
@@ -467,8 +421,8 @@ theorem div_1 (x : ℕ) : x div 1 = x
     x = x div 1 * 1 + x mod 1 : div_mod_eq _ _
      ... = x div 1 : by simp)
 
--- divides
--- =======
+-- Divides
+-- -------
 
 definition dvd (x y : ℕ) : Bool := y mod x = 0
 
@@ -525,11 +479,10 @@ theorem dvd_iff_exists_mul (x y : ℕ) : x | y ↔ ∃z, z * x = y
       show x | y, from mul_eq_imp_dvd zx_eq)
 
 
--- gcd and lcm
--- ===========
+-- Gcd and lcm
+-- -----------
 
--- definition of gcd
--- -----------------
+-- ### definition of gcd
 
 definition gcd_aux_measure (p : ℕ ## ℕ) : ℕ
 := tproj2 p

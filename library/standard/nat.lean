@@ -6,6 +6,8 @@
 
 -- Theory nat
 -- ==========
+--
+-- The natural numbers, with addition, multiplication, ordering, and subtraction.
 
 -- Axioms
 -- ------
@@ -31,8 +33,8 @@ theorem induction_on {P : nat → Bool} (a : ℕ) (H1 : P 0)
     (H2 : ∀(n : ℕ) (IH : P n), P (succ n)) : P a
 := rec H1 H2 a
 
--- succ and pred
--- -------------
+-- Successor and predecessor
+-- -------------------------
 
 theorem succ_ne_zero (n : ℕ) : succ n ≠ 0
 :=
@@ -68,8 +70,10 @@ theorem zero_or_exists_succ (n : ℕ) : n = 0 ∨ ∃k, n = succ k
     (assume H : n = succ (pred n), exists_intro (pred n) H)
 
 theorem case {P : nat → Bool} (n : ℕ) (H1: P 0) (H2 : ∀m, P (succ m)) : P n
-:=
-  induction_on n H1 (take m IH, H2 m)
+:= induction_on n H1 (take m IH, H2 m)
+
+theorem case_zero_pos {P : ℕ → Bool} (y : ℕ) (H0 : P 0) (H1 : ∀y, y > 0 → P y) : P y
+:= case y H0 (take y', H1 _ (succ_pos _))
 
 theorem discriminate {B : Bool} {n : ℕ} (H1: n = 0 → B) (H2 : ∀m, n = succ m → B) : B
 :=
@@ -155,8 +159,8 @@ theorem sub_induction {P : nat → nat → Bool} (n m : ℕ) (H1 : ∀m, P 0 m)
 
 add_rewrite succ_ne_zero
 
--- add
--- ---
+-- Addition
+-- --------
 
 definition add (n m : ℕ) := rec n (fun k x, succ x) m
 infixl 65 +  : add
@@ -168,7 +172,7 @@ theorem add_succ_right (n m : ℕ) : n + succ m = succ (n + m)
 
 set_opaque add true
 
--- # comm, assoc
+-- ### commutativity and associativity
 
 theorem add_zero_left (n : ℕ) : 0 + n = n
 :=
@@ -232,7 +236,7 @@ theorem add_left_comm (n m k : ℕ) : n + (m + k) = m + (n + k)
 theorem add_right_comm (n m k : ℕ) : n + m + k = n + k + m
 := right_comm add_comm add_assoc n m k
 
---the following is used a couple of times in int.lean -- replace with by simp?
+--- the following is used a couple of times in int.lean -- replace with by simp?
 theorem add_switch (n m k l : ℕ) : n + m + (k + l) = n + k + (m + l)
 :=
   calc
@@ -240,7 +244,7 @@ theorem add_switch (n m k l : ℕ) : n + m + (k + l) = n + k + (m + l)
       ... = n + k + m + l : {add_right_comm n m k}
       ... = n + k + (m + l) : add_assoc (n + k) m l
 
--- # inversion
+-- ### cancelation
 
 theorem add_cancel_left {n m k : ℕ} : n + m = n + k → m = k
 :=
@@ -287,9 +291,9 @@ theorem add_eq_zero_right {n m : ℕ} (H : n + m = 0) : m = 0
 theorem add_eq_zero {n m : ℕ} (H : n + m = 0) : n = 0 ∧ m = 0
 := and_intro (add_eq_zero_left H) (add_eq_zero_right H)
 
--- add_eq_self below
+-- See also add_eq_self below.
 
--- # misc
+-- ### misc
 
 theorem add_one (n : ℕ) : n + 1 = succ n
 :=
@@ -303,7 +307,7 @@ theorem add_one_left (n : ℕ) : 1 + n = succ n
     1 + n = succ (0 + n) : add_succ_left _ _
       ... = succ n : {add_zero_left _}
 
---rename? remove?
+--- rename? remove?
 theorem induction_plus_one {P : nat → Bool} (a : ℕ) (H1 : P 0)
     (H2 : ∀ (n : ℕ) (IH : P n), P (n + 1)) : P a
 := rec H1 (take n IH, subst (H2 n IH) (add_one n)) a
@@ -312,8 +316,8 @@ add_rewrite add_zero_left add_zero_right
 add_rewrite add_succ_left add_succ_right
 add_rewrite add_comm add_assoc add_left_comm
 
--- mul
--- ---
+-- Multiplication
+-- --------------
 
 definition mul (n m : ℕ) := rec 0 (fun m x, x + n) m
 infixl 70 *  : mul
@@ -325,7 +329,7 @@ theorem mul_succ_right (n m : ℕ) : n * succ m = n * m + n
 
 set_opaque mul true
 
--- # comm, distr, assoc, identity
+-- ### commutativity, distributivity, associativity, identity
 
 theorem mul_zero_left (n : ℕ) : 0 * n = 0
 :=
@@ -422,8 +426,6 @@ theorem mul_one_left (n : ℕ) : 1 * n = n
     1 * n = n * 1 : mul_comm _ _
       ... = n : mul_one_right n
 
--- # inversion
-
 theorem mul_eq_zero {n m : ℕ} (H : n * m = 0) : n = 0 ∨ m = 0
 :=
   discriminate
@@ -442,14 +444,12 @@ theorem mul_eq_zero {n m : ℕ} (H : n * m = 0) : n = 0 ∨ m = 0
                 ... = succ (k * succ l + l) : add_succ_right _ _),
           absurd_elim _  (trans Heq H) (succ_ne_zero _)))
 
--- see more under "positivity" below
-
 add_rewrite mul_zero_left mul_zero_right
 add_rewrite mul_succ_left mul_succ_right
 add_rewrite mul_comm mul_assoc mul_left_comm
 
--- le
--- --
+-- Less than or equal
+-- ------------------
 
 definition le (n m : ℕ) : Bool := exists k : nat, n + k = m
 infix  50 <= : le
@@ -463,7 +463,7 @@ theorem le_elim {n m : ℕ} (H : n ≤ m) : ∃ k, n + k = m
 
 set_opaque le true
 
--- # partial order (totality is part of lt)
+-- ### partial order (totality is part of less than)
 
 theorem le_refl (n : ℕ) : n ≤ n
 := le_intro (add_zero_right n)
@@ -510,7 +510,7 @@ theorem le_antisym {n m : ℕ} (H1 : n ≤ m) (H2 : m ≤ n) : n = m
       ... = n  + k : {symm L2}
       ... = m : Hk
 
--- # interaction with add
+-- ### interaction with addition
 
 theorem le_add_right (n m : ℕ) : n ≤ n + m
 := le_intro (refl (n + m))
@@ -552,7 +552,7 @@ theorem add_le_inv {n m k l : ℕ} (H1 : n + m ≤ k + l) (H2 : k ≤ n) : m ≤
 
 add_rewrite le_add_right le_add_left
 
--- # interaction with succ and pred
+-- ### interaction with successor and predecessor
 
 theorem succ_le {n m : ℕ} (H : n ≤ m) : succ n ≤ succ m
 := subst (subst (add_le_right H 1) (add_one n)) (add_one m)
@@ -652,7 +652,7 @@ theorem pred_le_imp_le_or_eq {n m : ℕ} (H : pred n ≤ m) : n ≤ m ∨ n = su
           (take H5 : succ k ≤ m, show n ≤ m, from subst H5 (symm Hn))
           (take H5 : k = m, show n = succ m, from subst Hn H5))
 
--- # interaction with mul
+-- ### interaction with multiplication
 
 theorem mul_le_left {n m : ℕ} (H : n ≤ m) (k : ℕ) : k * n ≤ k * m
 :=
@@ -675,10 +675,10 @@ theorem mul_le_right {n m : ℕ} (H : n ≤ m) (k : ℕ) : n * k ≤ m * k
 theorem mul_le {n m k l : ℕ} (H1 : n ≤ k) (H2 : m ≤ l) : n * m ≤ k * l
 := le_trans (mul_le_right H1 m) (mul_le_left H2 k)
 
--- mul_le_[left|right]_inv below
+--- mul_le_[left|right]_inv below
 
--- lt
--- --
+-- Less than
+-- ---------
 
 definition lt (n m : ℕ) := succ n ≤ m
 infix 50 <  : lt
@@ -692,7 +692,7 @@ theorem lt_elim {n m : ℕ} (H : n < m) : ∃ k, succ n + k = m
 theorem lt_add_succ (n m : ℕ) : n < n + succ m
 := lt_intro (add_move_succ n m)
 
--- # basic facts
+-- ### basic facts
 
 theorem lt_imp_ne {n m : ℕ} (H : n < m) : n ≠ m
 := and_elim_right (succ_le_imp_le_and_ne H)
@@ -712,7 +712,7 @@ theorem lt_imp_eq_succ {n m : ℕ} (H : n < m) : exists k, m = succ k
     (take (Hm : m = 0), absurd_elim _ (subst H Hm) (not_lt_zero n))
     (take (l : ℕ) (Hm : m = succ l), exists_intro l Hm)
 
--- # interaction with le
+-- ### interaction with le
 
 theorem lt_imp_le_succ {n m : ℕ} (H : n < m) : succ n ≤ m
 := H
@@ -738,7 +738,7 @@ theorem le_imp_lt_succ {n m : ℕ} (H : n ≤ m) : n < succ m
 theorem lt_succ_imp_le {n m : ℕ} (H : n < succ m) : n ≤ m
 := succ_le_cancel H
 
--- # trans, antisym
+-- ### transitivity, antisymmmetry
 
 theorem lt_le_trans {n m k : ℕ} (H1 : n < m) (H2 : m ≤ k) : n < k
 := le_trans H1 H2
@@ -758,7 +758,7 @@ theorem lt_imp_not_le {n m : ℕ} (H : n < m) : ¬ m ≤ n
 theorem lt_antisym {n m : ℕ} (H : n < m) : ¬ m < n
 := le_imp_not_lt (lt_imp_le H)
 
--- # interaction with add
+-- ### interaction with addition
 
 theorem add_lt_left {n m : ℕ} (H : n < m) (k : ℕ) : k + n < k + m
 := substp (fun x, x ≤ k + m) (add_le_left H k) (add_succ_right k n)
@@ -781,7 +781,7 @@ theorem add_lt_cancel_left {n m k : ℕ} (H : k + n < k + m) : n < m
 theorem add_lt_cancel_right {n m k : ℕ} (H : n + k < m + k) : n < m
 := add_lt_cancel_left (subst (subst H (add_comm n k)) (add_comm m k))
 
--- # interaction with succ (see also the interaction with le)
+-- ### interaction with successor (see also the interaction with le)
 
 theorem succ_lt {n m : ℕ} (H : n < m) : succ n < succ m
 := subst (subst (add_lt_right H 1) (add_one n)) (add_one m)
@@ -792,7 +792,7 @@ theorem succ_lt_cancel {n m : ℕ} (H : succ n < succ m) :  n < m
 theorem lt_imp_lt_succ {n m : ℕ} (H : n < m) : n < succ m
  := lt_trans H (self_lt_succ m)
 
--- # totality of lt and le
+-- ### totality of lt and le
 
 theorem le_or_lt (n m : ℕ) : n ≤ m ∨ m < n
 :=
@@ -837,9 +837,9 @@ theorem not_lt_imp_le {n m : ℕ} (H : ¬ n < m) : m ≤ n
 theorem not_le_imp_lt {n m : ℕ} (H : ¬ n ≤ m) : m < n
 := resolve_right (le_or_lt n m) H
 
--- interaction with mul under "positivity"
+-- Note: interaction with multiplication under "positivity"
 
--- # misc
+-- ### misc
 
 theorem strong_induction_on {P : nat → Bool} (n : ℕ) (H : ∀n, (∀m, m < n → P m) → P n) : P n
 :=
@@ -858,6 +858,19 @@ theorem strong_induction_on {P : nat → Bool} (n : ℕ) (H : ∀n, (∀m, m < n
             (assume H4: m = n', subst H2 (symm H4))),
   H1 _ _ (self_lt_succ n)
 
+theorem case_strong_induction_on {P : nat → Bool} (a : nat) (H0 : P 0)
+    (Hind : ∀(n : nat), (∀m, m ≤ n → P m) → P (succ n)) : P a
+:=
+  strong_induction_on a (
+    take n,
+    show (∀m, m < n → P m) → P n, from
+      case n
+         (assume H : (∀m, m < 0 → P m), show P 0, from H0)
+         (take n,
+           assume H : (∀m, m < succ n → P m),
+           show P (succ n), from
+             Hind n (take m, assume H1 : m ≤ n, H _ (le_imp_lt_succ H1))))
+
 theorem add_eq_self {n m : ℕ} (H : n + m = n) : m = 0
 :=
   discriminate
@@ -873,8 +886,8 @@ theorem add_eq_self {n m : ℕ} (H : n + m = n) : m = 0
       have H4 : n ≠ n, from lt_imp_ne H3,
       absurd_elim _ (refl n) H4)
 
--- ge, gt
--- ------
+-- Greater than, greater than or equal
+-- -----------------------------------
 
 definition ge (n m : ℕ) := m ≤ n
 infix 50 >= : ge
@@ -883,16 +896,16 @@ infix 50 ≥  : ge
 definition gt (n m : ℕ) := m < n
 infix 50 >  : gt
 
--- prove some theorems, like ge_imp_le le_imp_ge lt_imp_gt gt_imp_lt?
+--- prove some theorems, like ge_imp_le le_imp_ge lt_imp_gt gt_imp_lt?
 
--- positivity
+-- Positivity
 -- ---------
+--
+-- Writing "t > 0" is the preferred way to assert that a natural number is positive.
 
--- " _ > 0" is the preferred way to describe that a number is positive
+-- ### basic
 
--- # basic
-
--- see also succ_pos
+-- See also succ_pos.
 
 theorem zero_or_pos (n : ℕ) : n = 0 ∨ n > 0
 := or_imp_or (or_flip (le_imp_lt_or_eq (zero_le n))) (take H : 0 = n, symm H) (take H : n > 0, H)
@@ -914,7 +927,7 @@ theorem add_pos_right (n : ℕ) {k : ℕ} (H : k > 0) : n + k > n
 theorem add_pos_left (n : ℕ) {k : ℕ} (H : k > 0) : k + n > n
 := subst (add_pos_right n H) (add_comm n k)
 
--- # mul
+-- ### multiplication
 
 theorem mul_pos {n m : ℕ} (Hn : n > 0) (Hm : m > 0) : n * m > 0
 :=
@@ -977,9 +990,9 @@ theorem mul_cancel_left {n m k : ℕ} (Hn : n > 0) (H : n * m = n * k) : m = k
 theorem mul_cancel_right {n m k : ℕ} (Hm : m > 0) (H : n * m = k * m) : n = k
 := mul_cancel_left Hm (subst (subst H (mul_comm n m)) (mul_comm k m))
 
--- mul_eq_one below
+-- See also mul_eq_one below.
 
--- # interaction of mul with le and lt
+-- ### interaction of mul with le and lt
 
 theorem mul_lt_left {n m k : ℕ} (Hk : k > 0) (H : n < m) : k * n < k * m
 :=
@@ -1055,12 +1068,12 @@ theorem mul_eq_one_left {n m : ℕ} (H : n * m = 1) : n = 1
 theorem mul_eq_one_right {n m : ℕ} (H : n * m = 1) : m = 1
 := mul_eq_one_left (subst H (mul_comm n m))
 
--- theorem mul_eq_one {n m : ℕ} (H : n * m = 1) : n = 1 ∧ m = 1
--- := and_intro (mul_eq_one_left H) (mul_eq_one_right H)
+--- theorem mul_eq_one {n m : ℕ} (H : n * m = 1) : n = 1 ∧ m = 1
+--- := and_intro (mul_eq_one_left H) (mul_eq_one_right H)
 
 set_opaque lt true
 
--- # sub
+-- ### sub
 
 definition sub (n m : ℕ) : nat := rec n (fun m x, pred x) m
 infixl 65 - : sub
@@ -1081,7 +1094,7 @@ theorem sub_zero_left (n : ℕ) : 0 - n = 0
         0 - succ k = pred (0 - k) : sub_succ_right 0 k
           ... = pred 0 : {IH}
           ... = 0 : pred_zero)
-
+--(
 --theorem sub_succ_left (n m : ℕ) : pred (succ n - m) = n - m
 -- :=
 --   induction_on m
@@ -1092,6 +1105,7 @@ theorem sub_zero_left (n : ℕ) : 0 - n = 0
 --     (take k : nat,
 --       assume IH : pred (succ n - k) = n - k,
 --       _)
+--)
 
 theorem sub_succ_succ (n m : ℕ) : succ n - succ m = n - m
 :=
@@ -1189,7 +1203,7 @@ theorem succ_sub_one (n : ℕ) : succ n - 1 = n
 
 add_rewrite sub_add_left
 
--- # interaction with mul
+-- ### interaction with multiplication
 
 theorem mul_pred_left (n m : ℕ) : pred n * m = n * m - m
 :=
@@ -1236,7 +1250,7 @@ theorem mul_sub_distr_left (n m k : ℕ) : n * (m - k) = n * m - n * k
       ... = n * m - k * n : {mul_comm _ _}
       ... = n * m - n * k : {mul_comm _ _}
 
--- # interaction with inequalities
+-- ### interaction with inequalities
 
 theorem succ_sub {n m : ℕ} : n ≤ m → succ m - n  = succ (m - n)
 :=
@@ -1347,14 +1361,27 @@ theorem sub_intro {n m k : ℕ} (H : n + m = k) : k - n = m
         ... = m + n : add_comm n m,
   add_cancel_right H2
 
--- max, min, iteration, absolute difference
--- ----------------------------------------
+theorem sub_lt {x y : ℕ} (xpos : x > 0) (ypos : y > 0) : x - y < x
+:=
+  obtain (x' : ℕ) (xeq : x = succ x'), from pos_imp_eq_succ xpos,
+  obtain (y' : ℕ) (yeq : y = succ y'), from pos_imp_eq_succ ypos,
+  have xsuby_eq : x - y = x' - y', from
+    calc
+      x - y = succ x' - y : {xeq}
+        ... = succ x' - succ y' : {yeq}
+        ... = x' - y' : sub_succ_succ _ _,
+  have H1 : x' - y' ≤ x', from sub_le_self _ _,
+  have H2 : x' < succ x', from self_lt_succ _,
+  show x - y < x, from subst (subst (le_lt_trans H1 H2) (symm xsuby_eq)) (symm xeq)
 
--- theorem (n m : nat) : n - m + m = max n m
+-- Max, min, iteration, and absolute difference
+-- --------------------------------------------
 
--- # absolute difference
+--- theorem (n m : nat) : n - m + m = max n m
 
---this section is still incomplete, it is just sufficient to define the absolute value of an integer
+-- ### absolute difference
+
+-- This section is still incomplete, it is just sufficient to define the absolute value of an integer.
 
 definition asub (n m : ℕ) := (n - m) + (m - n)
 
@@ -1417,13 +1444,7 @@ theorem asub_eq {n m k l : ℕ} (H : n + m = k + l) : asub n k = asub l m
       have H3 : asub k n = asub m l, from special k l n m (symm H) H2,
       trans (asub_comm n k) (trans H3 (asub_comm m l)))
 
-
-
-  -- subst (subst (refl (((n + k) - (m + k)) + ((m + k) - (n + k))))
-  --   (sub_add_add_right n m k)) (sub_add_add_right m n k)
-
-
-
-
-
+--- subst (subst (refl (((n + k) - (m + k)) + ((m + k) - (n + k))))
+---   (sub_add_add_right n m k)) (sub_add_add_right m n k)
+---
 end --namespace nat
