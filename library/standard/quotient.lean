@@ -4,11 +4,11 @@
 -- Author: Floris van Doorn
 ----------------------------------------------------------------------------------------------------
 
-import macros tactic
-import subtype
+import macros tactic subtype
 
 
 -- for kernel?
+
 theorem eq_hcongr2 {A B : (Type U)} {a b : A} (f : A → B) (H : a = b) : f a == f b
 := subst (congr2 f H) (symm (heq_eq (f a) (f b)))
 
@@ -18,7 +18,7 @@ theorem and_inhabited_left {a : Bool} (b : Bool) (H : a) : a ∧ b ↔ b
   subst (and_true_left b) (symm H2)
 
 
--- relations
+-- ## Relations
 
 definition reflexive {A : Type} (R : A → A → Bool) : Bool := ∀a, R a a
 definition symmetric {A : Type} (R : A → A → Bool) : Bool := ∀a b, R a b → R b a
@@ -35,10 +35,12 @@ theorem equiv_imp_PER {A : Type} {R : A → A → Bool} (H : equivalence R) : PE
 := and_elim_right H
 
 
--- pairs
+-- ## More on pairs
 
 alias xx : tproj1
 alias yy : tproj2
+
+-- ### flip
 
 definition flip {A B : Type} (a : A ## B) : B ## A := tpair (yy a) (xx a)
 
@@ -72,6 +74,8 @@ theorem flip_inj {A B : Type} {a b : A ## B} (H : flip a = flip b) : a = b
   have H2 : flip (flip a) = flip (flip b), from congr2 flip H,
   show a = b, from subst (subst H2 (flip_flip a)) (flip_flip b)
 
+-- ### coordinatewise unary maps
+
 definition map_pair {A B : Type} (f : A → B) (a : A ## A) : B ## B
 := tpair (f (xx a)) (f (yy a))
 
@@ -88,6 +92,8 @@ theorem map_pair_xx {A B : Type} (f : A → B) (a : A ## A) : xx (map_pair f a) 
 
 theorem map_pair_yy {A B : Type} (f : A → B) (a : A ## A) : yy (map_pair f a) = f (tproj2 a)
 := tproj2_tpair _ _
+
+-- ### coordinatewise binary maps
 
 definition map_pair2 {A B C : Type} (f : A → B → C) (a : A ## A) (b : B ## B) : C ## C
 := tpair (f (xx a) (tproj1 b)) (f (yy a) (tproj2 b))
@@ -134,7 +140,9 @@ theorem map_pair2_flip {A B C : Type} (f : A → B → C) (a : A ## A) (b : B ##
         ... = yy (map_pair2 f (flip a) (flip b)) : symm (map_pair2_yy f _ _),
   tpairext Hx Hy
 
-add_rewrite flip_xx flip_yy map_pair_xx map_pair_yy map_pair2_xx map_pair2_yy
+add_rewrite flip_xx flip_yy flip_pair
+add_rewrite map_pair_xx map_pair_yy map_pair_pair
+add_rewrite map_pair2_xx map_pair2_yy map_pair2_pair
 
 theorem map_pair2_comm {A B : Type} {f : A → A → B} (Hcomm : ∀a b : A, f a b = f b a)
     (v w : A ## A) : map_pair2 f v w = map_pair2 f w v
@@ -210,12 +218,14 @@ set_opaque flip true
 set_opaque map_pair true
 set_opaque map_pair2 true
 
--------------------------------------------------- quotients
+-- Theory quot
+-- ===========
 
 namespace quot
 using subtype
 
----------- definition and basics
+-- definition and basics
+-- ---------------------
 
 definition is_quotient {A B : Type} (R : A → A → Bool) (abs : A → B) (rep : B → A) : Bool
 :=
@@ -307,7 +317,10 @@ theorem quotient_imp_trans {A B : Type} {R : A → A → Bool} {abs : A → B} {
   have Hac : abs a = abs c, from trans (eq_abs Q Hab) (eq_abs Q Hbc),
   R_intro Q Ha Hc Hac
 
----------- recursion (maybe some are superfluous)
+-- recursion
+-- ---------
+
+-- (maybe some are superfluous)
 
 definition rec {A B : Type} {R : A → A → Bool} {abs : A → B} {rep : B → A}
     (Q : is_quotient R abs rep) {C : B → Type} (f : forall (a : A), C (abs a)) (b : B) : C b
@@ -402,7 +415,8 @@ set_opaque rec_binary true
 set_opaque quotient_map true
 set_opaque quotient_map_binary true
 
----------- image
+-- image
+-- -----
 
 definition image {A B : Type} (f : A → B) := subtype B (fun b, ∃a, f a = b)
 
@@ -468,8 +482,10 @@ theorem idempotent_image_fix {A : Type} {f : A → A} (H : ∀a, f (f a) = f a) 
       ... = f a : H a
       ... = rep b : Ha
 
----------- construct quotient from representative map
+-- construct quotient from representative map
+-- ------------------------------------------
 
+--the R's are intentionally explicit, because usually the elaborator cannot figure them out when implicit
 theorem representative_map_idempotent {A : Type} (R : A → A → Bool) {f : A → A}
     (H1 : ∀a, R a (f a)) (H2 : ∀a b, R a b ↔ R a a ∧ R b b ∧ f a = f b) (a : A)
     : f (f a) = f a
@@ -483,7 +499,12 @@ theorem representative_map_idempotent_equiv {A : Type} (R : A → A → Bool) {f
 theorem representative_map_refl_rep {A : Type} (R : A → A → Bool) {f : A → A}
     (H1 : ∀a, R a (f a)) (H2 : ∀a b, R a b ↔ R a a ∧ R b b ∧ f a = f b) (a : A)
     : R (f a) (f a)
-:=  subst (H1 (f a)) (representative_map_idempotent R H1 H2 a)
+:= subst (H1 (f a)) (representative_map_idempotent R H1 H2 a)
+
+theorem representative_map_image_fix {A : Type} (R : A → A → Bool) {f : A → A}
+    (H1 : ∀a, R a (f a)) (H2 : ∀a a', R a a' ↔ R a a ∧ R a' a' ∧ f a = f a') (b : image f)
+    : f (rep b) = rep b
+:= idempotent_image_fix (representative_map_idempotent R H1 H2) b
 
 -- this theorem fails if it's not given explicitly that "image f" is the "B"
 -- note: rep is subtype::rep
@@ -532,7 +553,8 @@ theorem representative_map_to_quotient_equiv {A : Type} {R : A → A → Bool}
         from subst H4 (symm (and_inhabited_left _ (reflR b))),
       subst H5 (symm (and_inhabited_left _ (reflR a))))
 
----------- abstract quotient
+-- abstract quotient
+-- -----------------
 
 definition prelim_map {A : Type} (R : A → A → Bool) (a : A)
 := ε (inhabited_intro a) (fun b, R a b)

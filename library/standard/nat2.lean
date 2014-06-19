@@ -349,7 +349,7 @@ theorem div_mod_eq (x y : ℕ) : x = x div y * y + x mod y
                       ... = ((succ x - y) div y) * y + y + (succ x - y) mod y : {H4}
                       ... = ((succ x - y) div y) * y + (succ x - y) mod y + y : add_right_comm _ _ _
                       ... = succ x - y + y : {symm (IH _ H6)}
-                      ... = succ x : add_sub_left H2))))
+                      ... = succ x : add_sub_ge_left H2))))
 
 theorem mod_le (x y : ℕ) : x mod y ≤ x
 := subst (le_add_left (x mod y) _) (symm (div_mod_eq _ _))
