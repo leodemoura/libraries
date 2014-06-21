@@ -89,7 +89,7 @@ theorem rec_measure_aux_spec {dom codom : Type} (default : codom) (measure : dom
       funext
         (take x : dom,
           show f' (succ m) x = restrict default measure f (succ m) x, from
-            by_cases (measure x < succ m)
+            by_cases --(measure x < succ m)
               (assume H1 : measure x < succ m,
                 have H2 : f' (succ m) x = rec_val x f, from
                   calc
@@ -158,7 +158,7 @@ theorem div_aux_decreasing (y : ℕ) (g : ℕ → ℕ) (m : ℕ) (x : ℕ) (H : 
   let lhs := div_aux_rec y x g in
   let rhs := div_aux_rec y x (restrict 0 (fun x, x) g m) in
   show lhs = rhs, from
-    by_cases (y = 0 ∨ x < y)
+    by_cases --(y = 0 ∨ x < y)
       (assume H1 : y = 0 ∨ x < y,
         calc
           lhs = 0 : imp_if_eq H1 _ _
@@ -166,7 +166,7 @@ theorem div_aux_decreasing (y : ℕ) (g : ℕ → ℕ) (m : ℕ) (x : ℕ) (H : 
       (assume H1 : ¬ (y = 0 ∨ x < y),
         have H2 : y ≠ 0 ∧ ¬ x < y, from not_or _ _ ◂ H1,
         have ypos : y > 0, from ne_zero_pos (and_elim_left H2),
-        have xgey : x ≥ y, from not_lt_imp_le (and_elim_right H2),
+        have xgey : x ≥ y, from not_lt_imp_ge (and_elim_right H2),
         have H4 : x - y < x, from sub_lt (lt_le_trans ypos xgey) ypos,
         have H5 : x - y < m, from lt_le_trans H4 H,
         symm (calc
@@ -198,7 +198,7 @@ theorem div_rec {x y : ℕ} (H1 : y > 0) (H2 : x ≥ y) : x div y = succ ((x - y
       (assume H4 : y = 0 ∨ x < y,
         or_elim H4
           (assume H5 : y = 0, not_elim (lt_irrefl _) (subst H1 H5))
-          (assume H5 : x < y, not_elim (lt_imp_not_le H5) H2)),
+          (assume H5 : x < y, not_elim (lt_imp_not_ge H5) H2)),
   trans (div_aux_spec _ _) (not_imp_if_eq H3 _ _)
 
 add_rewrite div_zero div_less zero_div
@@ -234,7 +234,7 @@ theorem mod_aux_decreasing (y : ℕ) (g : ℕ → ℕ) (m : ℕ) (x : ℕ) (H : 
   let lhs := mod_aux_rec y x g in
   let rhs := mod_aux_rec y x (restrict 0 (fun x, x) g m) in
   show lhs = rhs, from
-    by_cases (y = 0 ∨ x < y)
+    by_cases --(y = 0 ∨ x < y)
       (assume H1 : y = 0 ∨ x < y,
         calc
           lhs = x : imp_if_eq H1 _ _
@@ -242,7 +242,7 @@ theorem mod_aux_decreasing (y : ℕ) (g : ℕ → ℕ) (m : ℕ) (x : ℕ) (H : 
       (assume H1 : ¬ (y = 0 ∨ x < y),
         have H2 : y ≠ 0 ∧ ¬ x < y, from not_or _ _ ◂ H1,
         have ypos : y > 0, from ne_zero_pos (and_elim_left H2),
-        have xgey : x ≥ y, from not_lt_imp_le (and_elim_right H2),
+        have xgey : x ≥ y, from not_lt_imp_ge (and_elim_right H2),
         have H4 : x - y < x, from sub_lt (lt_le_trans ypos xgey) ypos,
         have H5 : x - y < m, from lt_le_trans H4 H,
         symm (calc
@@ -274,7 +274,7 @@ theorem mod_rec {x y : ℕ} (H1 : y > 0) (H2 : x ≥ y) : x mod y = (x - y) mod 
       (assume H4 : y = 0 ∨ x < y,
         or_elim H4
           (assume H5 : y = 0, not_elim (lt_irrefl _) (subst H1 H5))
-          (assume H5 : x < y, not_elim (lt_imp_not_le H5) H2)),
+          (assume H5 : x < y, not_elim (lt_imp_not_ge H5) H2)),
   trans (mod_aux_spec _ _) (not_imp_if_eq H3 _ _)
 
 theorem mod_add_self (x : ℕ) {z : ℕ} (H : z > 0) : (x + z) mod z = x mod z
@@ -304,12 +304,12 @@ theorem mod_lt (x : ℕ) {y : ℕ} (H : y > 0) : x mod y < y
     (take x,
       assume IH : ∀x', x' ≤ x → x' mod y < y,
       show succ x mod y < y, from
-        by_cases (succ x < y)
+        by_cases --(succ x < y)
           (assume H1 : succ x < y,
             have H2 : succ x mod y = succ x, from mod_less H1,
             show succ x mod y < y, from subst H1 (symm H2))
           (assume H1 : ¬ succ x < y,
-            have H2 : y ≤ succ x, from not_lt_imp_le H1,
+            have H2 : y ≤ succ x, from not_lt_imp_ge H1,
             have H3 : succ x mod y = (succ x - y) mod y, from mod_rec H H2,
             have H4 : succ x - y < succ x, from sub_lt (succ_pos _) H,
             have H5 : succ x - y ≤ x, from lt_succ_imp_le H4,
@@ -331,13 +331,13 @@ theorem div_mod_eq (x y : ℕ) : x = x div y * y + x mod y
           (take x,
             assume IH : ∀x', x' ≤ x → x' = x' div y * y + x' mod y,
             show succ x = succ x div y * y + succ x mod y, from
-              by_cases (succ x < y)
+              by_cases --(succ x < y)
                 (assume H1 : succ x < y,
                   have H2 : succ x div y = 0, from div_less H1,
                   have H3 : succ x mod y = succ x, from mod_less H1,
                   by simp)
                 (assume H1 : ¬ succ x < y,
-                  have H2 : y ≤ succ x, from not_lt_imp_le H1,
+                  have H2 : y ≤ succ x, from not_lt_imp_ge H1,
                   have H3 : succ x div y = succ ((succ x - y) div y), from div_rec H H2,
                   have H4 : succ x mod y = (succ x - y) mod y, from mod_rec H H2,
                   have H5 : succ x - y < succ x, from sub_lt (succ_pos _) H,
@@ -376,7 +376,7 @@ theorem quotient_unique {y : ℕ} (H : y > 0) {q1 r1 q2 r2 : ℕ} (H1 : r1 < y) 
 
 theorem div_mul_mul {z : ℕ} (x y : ℕ) (zpos : z > 0) : (z * x) div (z * y) = x div y
 :=
-  by_cases (y = 0)
+  by_cases --(y = 0)
     (assume H : y = 0, by simp)
     (assume H : y ≠ 0,
       have ypos : y > 0, from ne_zero_pos H,
@@ -394,7 +394,7 @@ theorem div_mul_mul {z : ℕ} (x y : ℕ) (zpos : z > 0) : (z * x) div (z * y) =
 
 theorem mod_mul_mul {z : ℕ} (x y : ℕ) (zpos : z > 0) : (z * x) mod (z * y) = z * (x mod y)
 :=
-  by_cases (y = 0)
+  by_cases --(y = 0)
     (assume H : y = 0, by simp)
     (assume H : y ≠ 0,
       have ypos : y > 0, from ne_zero_pos H,
@@ -447,7 +447,7 @@ theorem mul_eq_imp_dvd {z x y : ℕ} (H : z * y = x) :  y | x
          ... = x mod y + x div y * y - x div y * y : {H1}
          ... = x mod y : sub_add_left _ _,
   show x mod y = 0, from
-    by_cases (y = 0)
+    by_cases --(y = 0)
       (assume yz : y = 0,
         have xz : x = 0, from
           calc
@@ -502,7 +502,7 @@ theorem gcd_aux_decreasing (g : ℕ ## ℕ → ℕ) (m : ℕ) (p : ℕ ## ℕ) (
   let lhs := gcd_aux_rec p g in
   let rhs := gcd_aux_rec p (restrict 0 gcd_aux_measure g m) in
   show lhs = rhs, from
-    by_cases (y = 0)
+    by_cases --(y = 0)
       (assume H1 : y = 0,
         calc
           lhs = x : imp_if_eq H1 _ _

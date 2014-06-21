@@ -226,8 +226,8 @@ theorem em (a : Bool) : a ∨ ¬ a
      (assume Ht : a = true, or_intro_left (¬ a) (eqt_elim Ht))
      (assume Hf : a = false, or_intro_right a (eqf_elim Hf))
 
--- allows "proof by cases" -- suggestion: make b implicit
-theorem by_cases {P : Bool} (b : Bool) (H1 : b → P) (H2 : ¬ b → P) : P
+-- allows "proof by cases"
+theorem by_cases {P : Bool} {b : Bool} (H1 : b → P) (H2 : ¬ b → P) : P
 := or_elim (em b) H1 H2
 
 theorem boolcomplete_swapped (a : Bool) : a = false ∨ a = true
@@ -390,18 +390,17 @@ theorem or_imp_or {a b c d : Bool} (H1 : a ∨ b) (H2 : a → c) (H3 : b → d) 
     (assume Ha : a, or_intro_left d (H2 Ha))
     (assume Hb : b, or_intro_right c (H3 Hb))
 
--- TODO: maybe rename to imp_or_left
 theorem or_imp_or_left {a b c : Bool} (H1 : a ∨ c) (H : a → b) : b ∨ c
 :=
-  or_elim H1
-    (assume H2 : a, or_intro_left _ (H H2))
-    (assume H2 : c, or_intro_right _ H2)
+  or_imp_or H1
+    (assume H2 : a, H H2)
+    (assume H2 : c, H2)
 
 theorem or_imp_or_right {a b c : Bool} (H1 : c ∨ a) (H : a → b) : c ∨ b
 :=
-  or_elim H1
-    (assume H2 : c, or_intro_left _ H2)
-    (assume H2 : a, or_intro_right _ (H H2))
+  or_imp_or H1
+    (assume H2 : c, H2)
+    (assume H2 : a, H H2)
 
 add_rewrite or_comm or_assoc or_id or_false_left or_false_right
             or_true_left or_true_right or_tauto or_left_comm
@@ -917,7 +916,6 @@ theorem eta {A : (Type U)} {B : A → (Type U)} (f : ∀ x : A, B x) : (λ x : A
 -- Epsilon (Hilbert's operator)
 variable eps {A : (Type U)} (H : inhabited A) (P : A → Bool) : A
 alias ε : eps
--- suggestion: make "a" implicit
 axiom eps_ax {A : (Type U)} (H : inhabited A) {P : A → Bool} (a : A) : P a → P (ε H P)
 
 theorem eps_th {A : (Type U)} {P : A → Bool} (a : A) : P a → P (ε (inhabited_intro a) P)
@@ -943,7 +941,7 @@ theorem exists_to_eps {A : (Type U)} {P : A → Bool} (H : ∃ x, P x) : P (ε (
 theorem axiom_of_choice {A : (Type U)} {B : A → (Type U)} {R : ∀ x : A, B x → Bool}
     (H : ∀ x, ∃ y, R x y) : ∃ f, ∀ x, R x (f x)
 := exists_intro
-      (λ x, ε (inhabited_ex_intro (H x)) (λ y, R x y)) -- witness for f
+      (λ x, ε (inhabited_ex_intro (H x)) (λ y, R x y))-- witness for f
       (λ x, exists_to_eps (H x))                      -- proof that witness satisfies ∀ x, R x (f x)
 
 theorem skolem_th {A : (Type U)} {B : A → (Type U)} {P : ∀ x : A, B x → Bool} :

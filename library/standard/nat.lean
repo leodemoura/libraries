@@ -68,6 +68,7 @@ theorem zero_or_exists_succ (n : ℕ) : n = 0 ∨ ∃k, n = succ k
   or_imp_or_right (zero_or_succ_pred n)
     (assume H : n = succ (pred n), exists_intro (pred n) H)
 
+-- name clash with kernel.case
 theorem case {P : nat → Bool} (n : ℕ) (H1: P 0) (H2 : ∀m, P (succ m)) : P n
 := induction_on n H1 (take m IH, H2 m)
 
@@ -236,13 +237,13 @@ add_rewrite add_zero_left add_zero_right
 add_rewrite add_succ_left add_succ_right
 add_rewrite add_comm add_assoc add_left_comm
 
---- the following WAS used a couple of times in int.lean
+--- the following was used a couple of times in int.lean
 -- theorem add_switch (n m k l : ℕ) : n + m + (k + l) = n + k + (m + l)
 -- := by simp
 
 -- ### cancelation
 
-theorem add_cancel_left {n m k : ℕ} : n + m = n + k → m = k
+theorem add_cancel_left {m k n : ℕ} : n + m = n + k → m = k
 :=
   induction_on n
     (take H : 0 + m = 0 + k,
@@ -259,13 +260,13 @@ theorem add_cancel_left {n m k : ℕ} : n + m = n + k → m = k
       have H3 : n + m = n + k, from succ_inj H2,
       IH H3)
 
-theorem add_cancel_right {n m k : ℕ} (H : n + m = k + m) : n = k
+theorem add_cancel_right {n m k : ℕ} (H : n + k = m + k) : n = m
 :=
-  have H2 : m + n = m + k,
-    from calc
-      m + n = n + m : add_comm m n
-      ... = k + m : H
-      ... = m + k : add_comm k m,
+  have H2 : k + n = k + m, from
+    calc
+      k + n = n + k : add_comm k n
+      ... = m + k : H
+      ... = k + m : add_comm m k,
     add_cancel_left H2
 
 theorem add_eq_zero_left {n m : ℕ} : n + m = 0 → n = 0
@@ -286,6 +287,11 @@ theorem add_eq_zero_right {n m : ℕ} (H : n + m = 0) : m = 0
 
 theorem add_eq_zero {n m : ℕ} (H : n + m = 0) : n = 0 ∧ m = 0
 := and_intro (add_eq_zero_left H) (add_eq_zero_right H)
+
+theorem add_eq_self {n m : ℕ} (H : n + m = n) : m = 0
+:=
+  have H2 : n + m = n + 0, from subst H (symm (add_zero_right n)),
+  add_cancel_left H2
 
 -- See also add_eq_self below.
 
@@ -436,6 +442,8 @@ theorem mul_eq_zero {n m : ℕ} (H : n * m = 0) : n = 0 ∨ m = 0
                 ... = succ (k * succ l + l) : add_succ_right _ _),
           absurd_elim _  (trans Heq H) (succ_ne_zero _)))
 
+---other inversion theorems appear below
+
 add_rewrite mul_zero_left mul_zero_right mul_one_right mul_one_left
 add_rewrite mul_succ_left mul_succ_right
 add_rewrite mul_comm mul_assoc mul_left_comm
@@ -585,9 +593,8 @@ theorem le_ne_imp_succ_le {n m : ℕ} (H1 : n ≤ m) (H2 : n ≠ m) : succ n ≤
 
 theorem le_succ_imp_le_or_eq {n m : ℕ} (H : n ≤ succ m) : n ≤ m ∨ n = succ m
 :=
-  or_imp_or (le_imp_succ_le_or_eq H)
+  or_imp_or_left (le_imp_succ_le_or_eq H)
     (take H2 : succ n ≤ succ m, show n ≤ m, from succ_le_cancel H2)
-    (take H2 : n = succ m, H2)
 
 theorem succ_le_imp_le_and_ne {n m : ℕ} (H : succ n ≤ m) : n ≤ m ∧ n ≠ m
 :=
@@ -670,11 +677,23 @@ theorem mul_le {n m k l : ℕ} (H1 : n ≤ k) (H2 : m ≤ l) : n * m ≤ k * l
 
 --- mul_le_[left|right]_inv below
 
--- Less than
--- ---------
+-- Less than, Greater than, Greater than or equal
+-- ----------------------------------------------
+
+-- ge and gt will be transparent, so we don't need to reprove theorems for le and lt for them
 
 definition lt (n m : ℕ) := succ n ≤ m
 infix 50 <  : lt
+
+definition ge (n m : ℕ) := m ≤ n
+infix 50 >= : ge
+infix 50 ≥  : ge
+
+definition gt (n m : ℕ) := m < n
+infix 50 >  : gt
+
+theorem lt_def (n m : ℕ) : n < m ↔ succ n ≤ m
+:= refl (n < m)
 
 theorem lt_intro {n m k : ℕ} (H : succ n + k = m) : n < m
 := le_intro H
@@ -722,7 +741,7 @@ theorem lt_imp_le {n m : ℕ} (H : n < m) : n ≤ m
 theorem le_imp_lt_or_eq {n m : ℕ} (H : n ≤ m) : n < m ∨ n = m
 := le_imp_succ_le_or_eq H
 
-theorem le_ne_imp_lt {n m : ℕ} (H1 : n ≤ m)  (H2 : n ≠ m) : n < m
+theorem le_ne_imp_lt {n m : ℕ} (H1 : n ≤ m) (H2 : n ≠ m) : n < m
 := le_ne_imp_succ_le H1 H2
 
 theorem le_imp_lt_succ {n m : ℕ} (H : n ≤ m) : n < succ m
@@ -742,14 +761,14 @@ theorem le_lt_trans {n m k : ℕ} (H1 : n ≤ m) (H2 : m < k) : n < k
 theorem lt_trans {n m k : ℕ} (H1 : n < m) (H2 : m < k) : n < k
 := lt_le_trans H1 (lt_imp_le H2)
 
-theorem le_imp_not_lt {n m : ℕ} (H : n ≤ m) : ¬ m < n
-:= not_intro (take H2 : m < n, absurd (le_lt_trans H H2) (lt_irrefl n))
+theorem le_imp_not_gt {n m : ℕ} (H : n ≤ m) : ¬ n > m
+:= not_intro (assume H2 : m < n, absurd (le_lt_trans H H2) (lt_irrefl n))
 
-theorem lt_imp_not_le {n m : ℕ} (H : n < m) : ¬ m ≤ n
-:= not_intro (take H2 : m ≤ n, absurd (lt_le_trans H H2) (lt_irrefl n))
+theorem lt_imp_not_ge {n m : ℕ} (H : n < m) : ¬ n ≥ m
+:= not_intro (assume H2 : m ≤ n, absurd (lt_le_trans H H2) (lt_irrefl n))
 
 theorem lt_antisym {n m : ℕ} (H : n < m) : ¬ m < n
-:= le_imp_not_lt (lt_imp_le H)
+:= le_imp_not_gt (lt_imp_le H)
 
 -- ### interaction with addition
 
@@ -787,7 +806,7 @@ theorem lt_imp_lt_succ {n m : ℕ} (H : n < m) : n < succ m
 
 -- ### totality of lt and le
 
-theorem le_or_lt (n m : ℕ) : n ≤ m ∨ m < n
+theorem le_or_gt (n m : ℕ) : n ≤ m ∨ n > m
 :=
   induction_on n
     (or_intro_left _ (zero_le m))
@@ -815,20 +834,20 @@ theorem le_or_lt (n m : ℕ) : n ≤ m ∨ m < n
               or_intro_left _ (le_intro H3)))
         (assume H : m < k, or_intro_right _ (lt_imp_lt_succ H)))
 
-theorem trichotomy_alt (n m : ℕ) : (n < m ∨ n = m) ∨ m < n
-:= or_imp_or (le_or_lt n m) (assume H : n ≤ m, le_imp_lt_or_eq H) (assume H : m < n, H)
+theorem trichotomy_alt (n m : ℕ) : (n < m ∨ n = m) ∨ n > m
+:= or_imp_or_left (le_or_gt n m) (assume H : n ≤ m, le_imp_lt_or_eq H)
 
-theorem trichotomy (n m : ℕ) : n < m ∨ n = m ∨ m < n
+theorem trichotomy (n m : ℕ) : n < m ∨ n = m ∨ n > m
 := iff_elim_left (or_assoc _ _ _) (trichotomy_alt n m)
 
 theorem le_total (n m : ℕ) : n ≤ m ∨ m ≤ n
-:= or_imp_or (le_or_lt n m) (assume H : n ≤ m, H) (assume H : m < n, lt_imp_le H)
+:= or_imp_or_right (le_or_gt n m) (assume H : m < n, lt_imp_le H)
 
-theorem not_lt_imp_le {n m : ℕ} (H : ¬ n < m) : m ≤ n
-:= resolve_left (le_or_lt m n) H
+theorem not_lt_imp_ge {n m : ℕ} (H : ¬ n < m) : n ≥ m
+:= resolve_left (le_or_gt m n) H
 
-theorem not_le_imp_lt {n m : ℕ} (H : ¬ n ≤ m) : m < n
-:= resolve_right (le_or_lt n m) H
+theorem not_le_imp_gt {n m : ℕ} (H : ¬ n ≤ m) : n > m
+:= resolve_right (le_or_gt n m) H
 
 -- Note: interaction with multiplication under "positivity"
 
@@ -864,31 +883,6 @@ theorem case_strong_induction_on {P : nat → Bool} (a : nat) (H0 : P 0)
            show P (succ n), from
              Hind n (take m, assume H1 : m ≤ n, H _ (le_imp_lt_succ H1))))
 
-theorem add_eq_self {n m : ℕ} (H : n + m = n) : m = 0
-:=
-  discriminate
-    (assume Hm : m = 0, Hm)
-    (take k : nat,
-      assume Hm : m = succ k,
-      have H2 : succ n + k = n,
-        from calc
-          succ n + k = n + succ k : add_move_succ n k
-            ... = n + m : {symm Hm}
-            ... = n : H,
-      have H3 : n < n, from lt_intro H2,
-      have H4 : n ≠ n, from lt_imp_ne H3,
-      absurd_elim _ (refl n) H4)
-
--- Greater than, greater than or equal
--- -----------------------------------
-
-definition ge (n m : ℕ) := m ≤ n
-infix 50 >= : ge
-infix 50 ≥  : ge
-
-definition gt (n m : ℕ) := m < n
-infix 50 >  : gt
-
 --- prove some theorems, like ge_imp_le le_imp_ge lt_imp_gt gt_imp_lt?
 
 -- Positivity
@@ -904,7 +898,7 @@ theorem case_zero_pos {P : ℕ → Bool} (y : ℕ) (H0 : P 0) (H1 : ∀y, y > 0 
 := case y H0 (take y', H1 _ (succ_pos _))
 
 theorem zero_or_pos (n : ℕ) : n = 0 ∨ n > 0
-:= or_imp_or (or_flip (le_imp_lt_or_eq (zero_le n))) (take H : 0 = n, symm H) (take H : n > 0, H)
+:= or_imp_or_left (or_flip (le_imp_lt_or_eq (zero_le n))) (take H : 0 = n, symm H)
 
 theorem succ_imp_pos {n m : ℕ} (H : n = succ m) : n > 0
 := subst (succ_pos m) (symm H)
@@ -949,42 +943,8 @@ theorem mul_pos_imp_pos_left {n m : ℕ} (H : n * m > 0) : n > 0
       assume Hl : n = succ l,
       subst (succ_pos l) (symm Hl))
 
-theorem mul_pos_imp_pos_right {n m : ℕ} (H : n * m > 0) : m > 0
+theorem mul_pos_imp_pos_right {m n : ℕ} (H : n * m > 0) : m > 0
 := mul_pos_imp_pos_left (subst H (mul_comm n m))
-
-theorem mul_cancel_left {n m k : ℕ} (Hn : n > 0) (H : n * m = n * k) : m = k
-:=
-  have general : ∀m, n * m = n * k → m = k, from
-    induction_on k
-      (take m : nat,
-        assume H : n * m = n * 0,
-        have H2 : n * m = 0,
-          from calc
-            n * m = n * 0 : H
-              ... = 0 : mul_zero_right n,
-        have H3 : n = 0 ∨ m = 0, from mul_eq_zero H2,
-        resolve_right H3 (ne_symm (lt_imp_ne Hn)))
-      (take (l : ℕ),
-        assume (IH : ∀ m, n * m = n * l → m = l),
-        take (m : ℕ),
-        assume (H : n * m = n * succ l),
-        have H2 :  n * succ l > 0, from mul_pos Hn (succ_pos l),
-        have H3 : m > 0, from mul_pos_imp_pos_right (subst H2 (symm H)),
-        obtain (l2 : ℕ) (Hm : m = succ l2), from pos_imp_eq_succ H3,
-        have H4 : n * l2 + n = n * l + n,
-          from calc
-            n * l2 + n = n * succ l2 : symm (mul_succ_right n l2)
-              ... = n * m : {symm Hm}
-              ... = n * succ l : H
-              ... = n * l + n : mul_succ_right n l,
-        have H5 : n * l2 = n * l, from add_cancel_right H4,
-        calc
-          m = succ l2 : Hm
-        ... = succ l : {IH l2 H5}),
-  general m H
-
-theorem mul_cancel_right {n m k : ℕ} (Hm : m > 0) (H : n * m = k * m) : n = k
-:= mul_cancel_left Hm (subst (subst H (mul_comm n m)) (mul_comm k m))
 
 -- See also mul_eq_one below.
 
@@ -1045,21 +1005,40 @@ theorem mul_le_cancel_left {n m k : ℕ} (Hk : k > 0) (H : k * n ≤ k * m) : n 
   have H4 : n < succ m, from mul_lt_cancel_left H3,
   show n ≤ m, from lt_succ_imp_le H4
 
-theorem mul_le_cancel_right {n m k : ℕ} (Hm : m > 0) (H : n * m ≤ k * m) : n ≤ k
+theorem mul_le_cancel_right {n k m : ℕ} (Hm : m > 0) (H : n * m ≤ k * m) : n ≤ k
 := mul_le_cancel_left Hm (subst (subst H (mul_comm n m)) (mul_comm k m))
+
+theorem mul_cancel_left {m k n : ℕ} (Hn : n > 0) (H : n * m = n * k) : m = k
+:=
+  have H2 : n * m ≤ n * k, from subst (le_refl (n * m)) H,
+  have H3 : n * k ≤ n * m, from subst (le_refl (n * m)) H,
+  have H4 : m ≤ k, from mul_le_cancel_left Hn H2,
+  have H5 : k ≤ m, from mul_le_cancel_left Hn H3,
+  le_antisym H4 H5
+
+theorem mul_cancel_left_or {n m k : ℕ} (H : n * m = n * k) : n = 0 ∨ m = k
+:=
+  or_imp_or_right (zero_or_pos n)
+    (assume Hn : n > 0, mul_cancel_left Hn H)
+
+theorem mul_cancel_right {n m k : ℕ} (Hm : m > 0) (H : n * m = k * m) : n = k
+:= mul_cancel_left Hm (subst (subst H (mul_comm n m)) (mul_comm k m))
+
+theorem mul_cancel_right_or  {n m k : ℕ} (H : n * m = k * m) : m = 0 ∨ n = k
+:= mul_cancel_left_or (subst (subst H (mul_comm n m)) (mul_comm k m))
 
 theorem mul_eq_one_left {n m : ℕ} (H : n * m = 1) : n = 1
 :=
   have H2 : n * m > 0, from subst (succ_pos 0) (symm H),
   have H3 : n > 0, from mul_pos_imp_pos_left H2,
   have H4 : m > 0, from mul_pos_imp_pos_right H2,
-  or_elim (le_or_lt n 1)
+  or_elim (le_or_gt n 1)
     (assume H5 : n ≤ 1,
       show n = 1, from le_antisym H5 H3)
     (assume H5 : n > 1,
       have H6 : n * m ≥ 2 * 1, from mul_le H5 H4,
       have H7 : 1 ≥ 2, from subst (subst H6 H) (mul_one_right 2),
-      absurd_elim _ (self_lt_succ 1) (le_imp_not_lt H7))
+      absurd_elim _ (self_lt_succ 1) (le_imp_not_gt H7))
 
 theorem mul_eq_one_right {n m : ℕ} (H : n * m = 1) : m = 1
 := mul_eq_one_left (subst H (mul_comm n m))
@@ -1103,6 +1082,7 @@ theorem sub_zero_left (n : ℕ) : 0 - n = 0
 --       _)
 --)
 
+--succ_sub_succ
 theorem sub_succ_succ (n m : ℕ) : succ n - succ m = n - m
 :=
   induction_on m
@@ -1121,7 +1101,8 @@ theorem sub_succ_succ (n m : ℕ) : succ n - succ m = n - m
 theorem sub_self (n : ℕ) : n - n = 0
 := induction_on n (sub_zero_right 0) (take k IH, trans (sub_succ_succ k k) IH)
 
-theorem sub_add_add_right (n m k : ℕ) : (n + k) - (m + k) = n - m
+--add_sub_add_right
+theorem sub_add_add_right (n k m : ℕ) : (n + k) - (m + k) = n - m
 :=
   induction_on k
     (calc
@@ -1135,9 +1116,10 @@ theorem sub_add_add_right (n m k : ℕ) : (n + k) - (m + k) = n - m
           ... = (n + l) - (m + l) : sub_succ_succ _ _
           ... =  n - m : IH)
 
-theorem sub_add_add_left (n m k : ℕ) : (k + n) - (k + m) = n - m
-:= subst (subst (sub_add_add_right n m k) (add_comm n k)) (add_comm m k)
+theorem sub_add_add_left (k n m : ℕ) : (k + n) - (k + m) = n - m
+:= subst (subst (sub_add_add_right n k m) (add_comm n k)) (add_comm m k)
 
+--add_sub_inv
 theorem sub_add_left (n m : ℕ) : n + m - m = n
 :=
   induction_on m
@@ -1149,6 +1131,7 @@ theorem sub_add_left (n m : ℕ) : n + m - m = n
           ... = n + k - k : sub_succ_succ _ _
           ... = n : IH)
 
+--add_sub_inv'
 theorem sub_add_left2 (n m : ℕ) : n + m - n = m
 := subst (sub_add_left m n) (add_comm m n)
 
@@ -1248,7 +1231,7 @@ theorem mul_sub_distr_left (n m k : ℕ) : n * (m - k) = n * m - n * k
 
 -- ### interaction with inequalities
 
-theorem succ_sub {n m : ℕ} : n ≤ m → succ m - n  = succ (m - n)
+theorem succ_sub {m n : ℕ} : m ≥ n → succ m - n  = succ (m - n)
 :=
   sub_induction n m
     (take k,
@@ -1312,19 +1295,18 @@ theorem le_add_sub_right (n m : ℕ) : m ≤ n + (m - n)
     (assume H : n ≤ m, subst (le_refl m) (symm (add_sub_le H)))
     (assume H : m ≤ n, subst H (symm (add_sub_ge H)))
 
--- replace "n = m + k" with "m + k = n"?
-theorem sub_split {P : nat → Bool} {n m : ℕ} (H1 : n ≤ m → P 0) (H2 : ∀k, n = m + k -> P k)
+theorem sub_split {P : nat → Bool} {n m : ℕ} (H1 : n ≤ m → P 0) (H2 : ∀k, m + k = n -> P k)
     : P (n - m)
 :=
   or_elim (le_total n m)
     (assume H3 : n ≤ m, subst (H1 H3) (symm (le_imp_sub_eq_zero H3)))
-    (assume H3 : m ≤ n, H2 (n - m) (symm (add_sub_le H3)))
+    (assume H3 : m ≤ n, H2 (n - m) (add_sub_le H3))
 
 theorem sub_le_self (n m : ℕ) : n - m ≤ n
 :=
   sub_split
     (assume H : n ≤ m, zero_le n)
-    (take k : nat, assume H : n = m + k, le_intro (subst (symm H) (add_comm m k)))
+    (take k : nat, assume H : m + k = n, le_intro (subst H (add_comm m k)))
 
 theorem le_elim_sub (n m : ℕ) (H : n ≤ m) : exists k, m - k = n
 :=
@@ -1359,9 +1341,9 @@ theorem sub_eq_zero_imp_le {n m : ℕ} : n - m = 0 → n ≤ m
   sub_split
     (assume H1 : n ≤ m, assume H2 : 0 = 0, H1)
     (take k : nat,
-      assume H1 : n = m + k,
+      assume H1 : m + k = n,
       assume H2 : k = 0,
-      have H3 : n = m, from subst (subst H1 H2) (add_zero_right m),
+      have H3 : n = m, from subst (subst (symm H1) H2) (add_zero_right m),
       subst (le_refl n) H3)
 
 theorem sub_sub_split {P : nat → nat → Bool} {n m : ℕ} (H1 : ∀k, n = m + k -> P k 0)
@@ -1415,13 +1397,13 @@ theorem sub_le_left {n m : ℕ} (H : n ≤ m) (k : nat) : k - m ≤ k - n
   sub_split
     (assume H2 : k ≤ m, zero_le (k - n))
     (take m' : ℕ,
-      assume Hm : k = m + m',
-      have H3 : n ≤ k, from le_trans H (le_intro (symm Hm)),
+      assume Hm : m + m' = k,
+      have H3 : n ≤ k, from le_trans H (le_intro Hm),
       have H4 : m' + l + n = k - n + n, from
         calc
           m' + l + n = n + l + m' : by simp_no_assump
             ... = m + m' : {Hl}
-            ... = k : symm Hm
+            ... = k : Hm
             ... = k - n + n : symm (add_sub_ge_left H3),
       le_intro (add_cancel_right H4))
 
@@ -1438,24 +1420,24 @@ theorem sub_triangle_inequality (n m k : ℕ) : n - k ≤ (n - m) + (m - k)
   sub_split
     (assume H : n ≤ m, subst (sub_le_right H k) (symm (add_zero_left (m - k))))
     (take mn : ℕ,
-      assume Hmn : n = m + mn,
+      assume Hmn : m + mn = n,
       sub_split
         (assume H : m ≤ k,
           have H2 : n - k ≤ n - m, from sub_le_left H n,
-          have H3 : n - k ≤ mn, from subst H2 (sub_intro (symm Hmn)),
+          have H3 : n - k ≤ mn, from subst H2 (sub_intro Hmn),
           show n - k ≤ mn + 0, from subst H3 (symm (add_zero_right mn)))
         (take km : ℕ,
-          assume Hkm : m = k + km,
+          assume Hkm : k + km = m,
           have H : k + (mn + km) = n, from
             calc
               k + (mn + km) = k + km + mn : by simp_no_assump
-                ... = m + mn : {symm Hkm}
-                ... = n : symm Hmn,
+                ... = m + mn : {Hkm}
+                ... = n : Hmn,
           have H2 : n - k = mn + km, from sub_intro H,
           subst (le_refl (n - k)) H2))
 
 
-add_rewrite sub_self
+add_rewrite sub_self mul_sub_distr_left mul_sub_distr_right
 
 -- Max, min, iteration, and absolute difference
 -- --------------------------------------------
@@ -1515,16 +1497,16 @@ theorem dist_intro {n m k : ℕ} (H : n + m = k) : dist k n = m
     dist k n = k - n : dist_ge (le_intro H)
       ... = m : sub_intro H
 
-theorem dist_add_right (n m k : ℕ) : dist (n + k) (m + k) = dist n m
+theorem dist_add_right (n k m : ℕ) : dist (n + k) (m + k) = dist n m
 :=
   calc
-    dist (n + k) (m + k) = n - m + ((m + k) - (n + k)) : {sub_add_add_right n m k}
-      ... = n - m + (m - n) : {sub_add_add_right m n k}
+    dist (n + k) (m + k) = n - m + ((m + k) - (n + k)) : {sub_add_add_right n k m}
+      ... = n - m + (m - n) : {sub_add_add_right m k n}
 
-theorem dist_add_left (n m k : ℕ) : dist (k + n) (k + m) = dist n m
-:= subst (subst (dist_add_right n m k) (add_comm n k)) (add_comm m k)
+theorem dist_add_left (k n m : ℕ) : dist (k + n) (k + m) = dist n m
+:= subst (subst (dist_add_right n k m) (add_comm n k)) (add_comm m k)
 
-add_rewrite dist_add_right dist_add_left
+add_rewrite dist_self dist_add_right dist_add_left
 
 theorem dist_ge_add_right {n m : ℕ} (H : n ≥ m) : dist n m + m = n
 :=
@@ -1532,12 +1514,24 @@ theorem dist_ge_add_right {n m : ℕ} (H : n ≥ m) : dist n m + m = n
     dist n m + m = n - m + m : {dist_ge H}
       ... = n : add_sub_ge_left H
 
-theorem dist_eq {n m k l : ℕ} (H : n + m = k + l) : dist n k = dist l m
+theorem dist_eq_intro {n m k l : ℕ} (H : n + m = k + l) : dist n k = dist l m
 :=
   calc
-    dist n k = dist (n + m) (k + m) : symm (dist_add_right n k m)
+    dist n k = dist (n + m) (k + m) : symm (dist_add_right n m k)
       ... = dist (k + l) (k + m) : {H}
-      ... = dist l m : dist_add_left l m k
+      ... = dist l m : dist_add_left k l m
+
+theorem dist_sub_move_add {n m : ℕ} (H : n ≥ m) (k : ℕ) : dist (n - m) k = dist n (k + m)
+:=
+  have H2 : n - m + (k + m) = k + n, from
+    calc
+      n - m + (k + m) = n - m + m + k : by simp
+        ... = n + k : {add_sub_ge_left H}
+        ... = k + n : by simp,
+  dist_eq_intro H2
+
+theorem dist_sub_move_add' {k m : ℕ} (H : k ≥ m) (n : ℕ) : dist n (k - m) = dist (n + m) k
+:= subst (subst (dist_sub_move_add H n) (dist_comm (k - m) n)) (dist_comm k (n + m))
 
 --triangle inequality formulated with dist
 theorem triangle_inequality (n m k : ℕ) : dist n k ≤ dist n m + dist m k
@@ -1550,9 +1544,44 @@ theorem dist_add_le_add_dist (n m k l : ℕ) : dist (n + m) (k + l) ≤ dist n k
 :=
   have H : dist (n + m) (k + m) + dist (k + m) (k + l) = dist n k + dist m l, from
     calc
-      _ = dist n k + dist (k + m) (k + l) : {dist_add_right n k m}
-    ... = _ : {dist_add_left m l k},
+      _ = dist n k + dist (k + m) (k + l) : {dist_add_right n m k}
+    ... = _ : {dist_add_left k m l},
   subst (triangle_inequality (n + m) (k + m) (k + l)) H
+
+--interaction with multiplication
+
+theorem dist_mul_left (k n m : ℕ) : dist (k * n) (k * m) = k * dist n m
+:=
+  have H : ∀n m, dist n m = n - m + (m - n), from take n m, refl _,
+  by simp
+
+theorem dist_mul_right (n k m : ℕ) : dist (n * k) (m * k) = dist n m * k
+:=
+  have H : ∀n m, dist n m = n - m + (m - n), from take n m, refl _,
+  by simp
+
+add_rewrite dist_mul_right dist_mul_left dist_comm
+
+--needed to prove |a| * |b| = |a * b| in int
+theorem dist_mul_dist (n m k l : ℕ) : dist n m * dist k l = dist (n * k + m * l) (n * l + m * k)
+:=
+  have lemma : ∀k l, k ≥ l → dist n m * dist k l = dist (n * k + m * l) (n * l + m * k), from
+    take k l : ℕ,
+    assume H : k ≥ l,
+    have H2 : m * k ≥ m * l, from mul_le_left H m,
+    have H3 : n * l + m * k ≥ m * l, from le_trans H2 (le_add_left _ _),
+    calc
+      dist n m * dist k l = dist n m * (k - l) : {dist_ge H}
+        ... = dist (n * (k - l)) (m * (k - l)) : symm (dist_mul_right n (k - l) m)
+        ... = dist (n * k - n * l) (m * k - m * l) : by simp
+        ... = dist (n * k) (m * k - m * l + n * l) : dist_sub_move_add (mul_le_left H n) _
+        ... = dist (n * k) (n * l + (m * k - m * l)) : {add_comm _ _}
+        ... = dist (n * k) (n * l + m * k - m * l) : {symm (add_sub_assoc H2 (n * l))}
+        ... = dist (n * k + m * l) (n * l + m * k) : dist_sub_move_add' H3 _,
+  or_elim (le_total k l)
+    (assume H : k ≤ l, subst (subst (lemma l k H) (dist_comm _ _)) (dist_comm l k))
+    (assume H : l ≤ k, lemma k l H)
+
 
 set_opaque dist true
 
