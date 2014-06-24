@@ -1033,12 +1033,15 @@ theorem eq_if_distribute_left {A : (Type U)} (c : Bool) (a b v : A)
     : ((if c then a else b) = v) = if c then a = v else b = v
 := app_if_distribute c (λ x, x = v) a b
 
+--same theorem as eqt_intro
 theorem imp_eq_true {b : Bool} : b → b = ⊤
 := case _ (take H, refl _) (take H, false_elim _ H) b
 
+--same theorem as eqf_intro
 theorem not_imp_eq_false {b : Bool} : ¬ b → b = ⊥
 := case (λx, ¬ x → x = ⊥) (take H, absurd_elim _ trivial H) (take H, refl _) b
 
+--rename to something which starts with "if"?
 theorem imp_if_eq {A : Type} {b : Bool} (H : b) (a a' : A) : (if b then a else a') = a
 :=
   calc

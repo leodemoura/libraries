@@ -19,12 +19,12 @@ unary_nat
 
 definition rel (a b : ℕ ## ℕ) : Bool := xx a + yy b = yy a + xx b
 
-theorem rel_comp2 (n m k l : ℕ) : (rel (tpair n m) (tpair k l)) ↔ (n + l = m + k)
+theorem rel_comp (n m k l : ℕ) : (rel (tpair n m) (tpair k l)) ↔ (n + l = m + k)
 :=
   have H : (xx (tpair n m) + yy (tpair k l) = yy (tpair n m) + xx (tpair k l)) = (n + l = m + k),
     by simp, H
 
-add_rewrite rel_comp2 --local
+add_rewrite rel_comp --local
 
 theorem rel_refl (a : ℕ ## ℕ) : rel a a
 := add_comm (xx a) (yy a)
@@ -63,17 +63,12 @@ definition proj (a : ℕ ## ℕ) : ℕ ## ℕ
 := if xx a ≥ yy a then tpair (xx a - yy a) 0 else tpair 0 (yy a - xx a)
 
 theorem proj_ge {a : ℕ ## ℕ} (H : xx a ≥ yy a) : proj a = tpair (xx a - yy a) 0
-:=
-  calc
-    proj a = if true then tpair (xx a - yy a) 0 else tpair 0 (yy a - xx a) : {eqt_intro H}
-      ... = tpair (xx a - yy a) 0 : by simp
+:= imp_if_eq H _ _
 
 theorem proj_lt {a : ℕ ## ℕ} (H : xx a < yy a) : proj a = tpair 0 (yy a - xx a)
 :=
   have H2 : ¬ xx a ≥ yy a, from lt_imp_not_ge H,
-  calc
-    proj a = if false then tpair (xx a - yy a) 0 else tpair 0 (yy a - xx a) : {eqf_intro H2}
-      ... = tpair 0 (yy a - xx a) : by simp
+  not_imp_if_eq H2 _ _
 
 theorem proj_le {a : ℕ ## ℕ} (H : xx a ≤ yy a) : proj a = tpair 0 (yy a - xx a)
 :=
@@ -198,7 +193,7 @@ theorem proj_idempotent (a : ℕ ## ℕ) : proj (proj a) = proj a
 
 -- ## Definition of ℤ and basic theorems and definitions
 
-definition int := image proj --should this be defined outside the namespace?
+definition int := image proj
 alias ℤ : int
 
 definition psub : ℕ ## ℕ → ℤ := fun_image proj
@@ -210,7 +205,7 @@ theorem quotient : is_quotient rel psub rep
 theorem psub_rep (a : ℤ) : psub (rep a) = a
 := abs_rep quotient a
 
-theorem int_destruct (a : ℤ) : ∃n m : ℕ, a = psub (tpair n m)
+theorem destruct (a : ℤ) : ∃n m : ℕ, a = psub (tpair n m)
 :=
   exists_intro (xx (rep a))
     (exists_intro (yy (rep a))
@@ -230,10 +225,9 @@ theorem eq_zero_intro (n : ℕ) : psub (tpair n n) = 0
 
 definition abs : ℤ → ℕ := rec_constant quotient (fun v, dist (xx v) (yy v))
 
-notation 90 | _ | : abs
----what level should be used? without level, superfluous parentheses are added to compilation output
+notation | _ | : abs
 
---move to other library or remove
+---move to other library or remove
 add_rewrite tpair_tproj_eq
 theorem tpair_translate {A B : Type} (P : A → B → A ## B → Bool)
     : (∀v, P (tproj1 v) (tproj2 v) v) ↔ (∀a b, P a b (tpair a b))
@@ -242,24 +236,22 @@ theorem tpair_translate {A B : Type} (P : A → B → A ## B → Bool)
     (assume H, take a b, subst (H (tpair a b)) (by simp))
     (assume H, take v, subst (H (tproj1 v) (tproj2 v)) (by simp))
 
-theorem abs_comp (v : ℕ ## ℕ) : |psub v| = dist (xx v) (yy v)
+theorem abs_comp (n m : ℕ) : |psub (tpair n m)| = dist n m
 :=
-  comp_constant quotient
-    (take v w : ℕ ## ℕ,
-      assume H : rel v w,
-      show dist (xx v) (yy v) = dist (xx w) (yy w), from dist_eq_intro H)
-    (rel_refl v)
+  have H : ∀v w : ℕ ## ℕ, rel v w → dist (xx v) (yy v) = dist (xx w) (yy w),
+    from take v w H, dist_eq_intro H,
+  have H2 : ∀v : ℕ ## ℕ, |psub v| = dist (xx v) (yy v),
+    from take v, (comp_constant quotient H (rel_refl v)),
+  (by simp) ◂ H2 (tpair n m)
 
-theorem abs_comp2 (n m : ℕ) : |psub (tpair n m)| = dist n m
-:= subst (abs_comp (tpair n m)) (by simp)
+add_rewrite abs_comp --local
 
-add_rewrite abs_comp2 --local
-
+  --the following theorem includes abs_zero
 theorem abs_of_nat (n : ℕ) : |n| = n
 :=
   calc
-    |psub (tpair n 0)| = dist n 0 : abs_comp2 n 0
-      ... = n : dist_zero_right n
+    |psub (tpair n 0)| = dist n 0 : by simp
+      ... = n : by simp
 
 theorem of_nat_inj {n m : ℕ} (H : of_nat n = of_nat m) : n = m
 :=
@@ -270,7 +262,7 @@ theorem of_nat_inj {n m : ℕ} (H : of_nat n = of_nat m) : n = m
 
 theorem abs_eq_zero {a : ℤ} (H : |a| = 0) : a = 0
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
   have H2 : dist xa ya = 0, from
     calc
       dist xa ya = |psub (tpair xa ya)| : by simp_no_assump
@@ -282,55 +274,49 @@ theorem abs_eq_zero {a : ℤ} (H : |a| = 0) : a = 0
   ... = psub (tpair ya ya) : {H3}
   ... = 0 : eq_zero_intro ya
 
+add_rewrite abs_of_nat
+
 -- ## neg
 
 definition neg : ℤ → ℤ := quotient_map quotient flip
 notation 80 - _ : neg
 
-theorem neg_comp (a : ℕ ## ℕ) : -psub a = psub (flip a)
-:= comp_quotient_map quotient @rel_flip (rel_refl a)
-
-theorem neg_comp2 (n m : ℕ) : -psub (tpair n m) = psub (tpair m n)
+theorem neg_comp (n m : ℕ) : -psub (tpair n m) = psub (tpair m n)
 :=
+  have H : ∀a, -psub a = psub (flip a),
+    from take a, comp_quotient_map quotient @rel_flip (rel_refl _),
   calc
-    -psub (tpair n m) = psub (flip (tpair n m)) : {neg_comp _}
+    -psub (tpair n m) = psub (flip (tpair n m)) : H (tpair n m)
       ... = psub (tpair m n) : by simp
 
-add_rewrite neg_comp2 --local
+add_rewrite neg_comp --local
 
---note: "-0" is interpreted as numeral
+---note: "-0" is interpreted as invalid numeral
 theorem neg_zero : - 0 = 0
-:=
-  calc
-    -psub (tpair 0 0) = psub (tpair 0 0) : neg_comp2 0 0
---      ... = psub (tpair 0 0) : by simp
+:= calc -psub (tpair 0 0) = psub (tpair 0 0) : neg_comp 0 0
 
 theorem neg_neg (a : ℤ) : -(-a) = a
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
   by simp
 
-add_rewrite neg_neg
+add_rewrite neg_neg neg_zero
 
 theorem neg_inj {a b : ℤ} (H : -a = -b) : a = b
-:=
-  calc
-    a = -(-a) : by simp_no_assump
-      ... = b : by simp
+:= (by simp_no_assump) ◂ congr2 neg H
 
-theorem abs_neg (a : ℤ) : |(-a)| = |a|
+theorem neg_move {a b : ℤ} (H : -a = b) : -b = a
+:= subst (neg_neg a) H
+
+theorem abs_neg (a : ℤ) : | -a| = |a|
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
   by simp
 
 theorem pos_eq_neg {n m : ℕ} (H : n = -m) : n = 0 ∧ m = 0
 :=
   have H2 : ∀n : ℕ, n = psub (tpair n 0), from take n : ℕ, refl n,
-  have H3 : psub (tpair n 0) = psub (tpair 0 m), from
-    calc
-      _ = n : by simp
-    ... = -m : H
-    ... = _ : by simp,
+  have H3 : psub (tpair n 0) = psub (tpair 0 m), from (by simp) ◂ H,
   have H4 : rel (tpair n 0) (tpair 0 m), from R_intro_refl quotient rel_refl H3,
   have H5 : n + m = 0, from
     calc
@@ -339,8 +325,10 @@ theorem pos_eq_neg {n m : ℕ} (H : n = -m) : n = 0 ∧ m = 0
         ... = 0 : by simp,
    add_eq_zero H5
 
---reverse?
-theorem int_cases (a : ℤ) : (∃n : ℕ, a = n) ∨ (∃n : ℕ, a = -n)
+add_rewrite abs_neg
+
+---reverse equalities
+theorem cases (a : ℤ) : (∃n : ℕ, a = n) ∨ (∃n : ℕ, a = -n)
 :=
   have Hrep : proj (rep a) = rep a, from @idempotent_image_fix _ proj proj_idempotent a,
   or_imp_or (or_flip (proj_zero_or (rep a)))
@@ -362,15 +350,17 @@ theorem int_cases (a : ℤ) : (∃n : ℕ, a = n) ∨ (∃n : ℕ, a = -n)
             ... = -psub (tpair (yy (rep a)) 0) : by simp
             ... = -of_nat (yy (rep a)) : refl _))
 
-theorem by_cases {P : ℤ → Bool} (a : ℤ) (H1 : ∀n : ℕ, P n) (H2 : ∀n : ℕ, P (-n)) : P a
+---rename to by_cases in Lean 0.2 (for now using this to avoid name clash)
+theorem int_by_cases {P : ℤ → Bool} (a : ℤ) (H1 : ∀n : ℕ, P n) (H2 : ∀n : ℕ, P (-n)) : P a
 :=
-  or_elim (int_cases a)
+  or_elim (cases a)
     (assume H, obtain (n : ℕ) (H3 : a = n), from H, subst (H1 n) (symm H3))
     (assume H, obtain (n : ℕ) (H3 : a = -n), from H, subst (H2 n) (symm H3))
 
+---reverse equalities, rename
 theorem cases_succ (a : ℤ) : (∃n : ℕ, a = n) ∨ (∃n : ℕ, a = -succ n)
 :=
-  or_elim (int_cases a)
+  or_elim (cases a)
     (assume H : (∃n : ℕ, a = n), or_intro_left _ H)
     (assume H,
       obtain (n : ℕ) (H2 : a = -n), from H,
@@ -387,20 +377,11 @@ theorem cases_succ (a : ℤ) : (∃n : ℕ, a = n) ∨ (∃n : ℕ, a = -succ n)
           have H4 : a = -succ k, from subst H2 H3,
           or_intro_right _ (exists_intro k H4)))
 
-theorem by_cases_succ {P : ℤ → Bool} (a : ℤ) (H1 : ∀n : ℕ, P n) (H2 : ∀n : ℕ, P (-succ n)) : P a
+theorem int_by_cases_succ {P : ℤ → Bool} (a : ℤ) (H1 : ∀n : ℕ, P n) (H2 : ∀n : ℕ, P (-succ n)) : P a
 :=
   or_elim (cases_succ a)
     (assume H, obtain (n : ℕ) (H3 : a = n), from H, subst (H1 n) (symm H3))
     (assume H, obtain (n : ℕ) (H3 : a = -succ n), from H, subst (H2 n) (symm H3))
-
-
--- theorem abs_cases (a : ℤ) : a = |a| ∨ a = - |a|
--- := _
-
-set_opaque int true
-set_opaque psub true
-set_opaque proj true
-set_opaque abs true
 
 theorem of_nat_eq_neg_of_nat {n m : ℕ} (H : n = - m) : n = 0 ∧ m = 0
 :=
@@ -417,6 +398,11 @@ theorem of_nat_eq_neg_of_nat {n m : ℕ} (H : n = - m) : n = 0 ∧ m = 0
         ... = 0 : by simp,
   add_eq_zero H4
 
+--some of these had to be transparent for theorem cases
+set_opaque int true
+set_opaque psub true
+set_opaque proj true
+
 -- ## add
 
 theorem rel_add {a a' b b' : ℕ ## ℕ} (Ha : rel a a') (Hb : rel b b')
@@ -431,25 +417,25 @@ theorem rel_add {a a' b b' : ℕ ## ℕ} (Ha : rel a a') (Hb : rel b b')
 definition add : ℤ → ℤ → ℤ := quotient_map_binary quotient (map_pair2 nat::add)
 infixl 65 + : add
 
-theorem add_comp (a b : ℕ ## ℕ) : psub a + psub b = psub (map_pair2 nat::add a b)
-:= comp_quotient_map_binary_refl rel_refl quotient @rel_add a b
+theorem add_comp (n m k l : ℕ) : psub (tpair n m) + psub (tpair k l) = psub (tpair (n + k) (m + l))
+:=
+  have H : ∀a b, psub a + psub b = psub (map_pair2 nat::add a b),
+    from comp_quotient_map_binary_refl rel_refl quotient @rel_add,
+  trans (H (tpair n m) (tpair k l)) (by simp)
 
-theorem add_comp2 (n m k l : ℕ) : psub (tpair n m) + psub (tpair k l) = psub (tpair (n + k) (m + l))
-:= trans (add_comp (tpair n m) (tpair k l)) (by simp)
-
-add_rewrite add_comp2 --local
+add_rewrite add_comp --local
 
 theorem add_comm (a b : ℤ) : a + b = b + a
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
-  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from int_destruct b,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
+  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from destruct b,
   by simp
 
 theorem add_assoc (a b c : ℤ) : a + b + c = a + (b + c)
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
-  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from int_destruct b,
-  obtain (xc yc : ℕ) (Hc : c = psub (tpair xc yc)), from int_destruct c,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
+  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from destruct b,
+  obtain (xc yc : ℕ) (Hc : c = psub (tpair xc yc)), from destruct c,
   by simp
 
 theorem add_left_comm (a b c : ℤ) : a + (b + c) = b + (a + c)
@@ -458,11 +444,11 @@ theorem add_left_comm (a b c : ℤ) : a + (b + c) = b + (a + c)
 theorem add_right_comm (a b c : ℤ) : a + b + c = a + c + b
 := right_comm add_comm add_assoc a b c
 
--- ### interaction with other objects
+-- ### interaction of add with other functions and constants
 
 theorem add_zero_right (a : ℤ) : a + 0 = a
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
   have H0 : 0 = psub (tpair 0 0), from refl 0,
   by simp
 
@@ -472,7 +458,7 @@ theorem add_zero_left (a : ℤ) : 0 + a = a
 theorem add_inverse_right (a : ℤ) : a + -a = 0
 :=
  have H : ∀n, psub (tpair n n) = 0, from eq_zero_intro,
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
   by simp
 
 theorem add_inverse_left (a : ℤ) : -a + a = 0
@@ -480,16 +466,14 @@ theorem add_inverse_left (a : ℤ) : -a + a = 0
 
 theorem neg_add_distr (a b : ℤ) : -(a + b) = -a + -b
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
-  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from int_destruct b,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
+  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from destruct b,
   by simp
 
----set_option pp::coercion true
-
-theorem triangle_inequality (a b : ℤ) : |(a + b)| ≤ |a| + |b| --note: ≤ is nat::≤
+theorem triangle_inequality (a b : ℤ) : |a + b| ≤ |a| + |b| --note: ≤ is nat::≤
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
-  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from int_destruct b,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
+  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from destruct b,
   have H : dist (xa + xb) (ya + yb) ≤ dist xa ya + dist xb yb,
     from dist_add_le_add_dist xa xb ya yb,
   by simp
@@ -596,16 +580,16 @@ theorem add_cancel_right {a b c : ℤ} (H : a + c = b + c) : a = b
 theorem add_cancel_left {a b c : ℤ} (H : a + b = a + c) : b = c
 := add_cancel_right (subst (subst H (add_comm a b)) (add_comm a c))
 
-theorem add_eq_zero_right {a b : ℤ} (H : a + b = 0) : b = -a
+theorem add_eq_zero_right {a b : ℤ} (H : a + b = 0) : -a = b
 :=
-  have H2 : a + b = a + -a, from subst H (symm (add_inverse_right a)),
-  show b = -a, from add_cancel_left H2
+  have H2 : a + -a = a + b, from subst (symm H) (symm (add_inverse_right a)),
+  show -a = b, from add_cancel_left H2
 
-theorem add_eq_zero_left {a b : ℤ} (H : a + b = 0) : a = -b
-:=
-  calc
-    a = -(-a) : symm (neg_neg a)
-  ... = -b : {symm (add_eq_zero_right H)}
+theorem add_eq_zero_left {a b : ℤ} (H : a + b = 0) : -b = a
+:= neg_move (add_eq_zero_right H)
+
+theorem add_eq_self {a b : ℤ} (H : a + b = a) : b = 0
+:= add_cancel_left (trans H (symm (add_zero_right a)))
 
 theorem sub_inj_left {a b c : ℤ} (H : a - b = a - c) : b = c
 := neg_inj (add_cancel_left H)
@@ -614,22 +598,21 @@ theorem sub_inj_right {a b c : ℤ} (H : a - b = c - b) : a = c
 := add_cancel_right H
 
 theorem sub_eq_zero {a b : ℤ} (H : a - b = 0) : a = b
-:= trans (add_eq_zero_left H) (neg_neg b)
+:= neg_inj (add_eq_zero_right H)
 
----should some of the equalities below be reversed?
-theorem add_imp_sub_right {a b c : ℤ} (H : a + b = c) : a = c - b
+theorem add_imp_sub_right {a b c : ℤ} (H : a + b = c) : c - b = a
 :=
-  have H2 : a + b = c - b + b, from trans H (symm (sub_add_inverse c b)),
+  have H2 : c - b + b = a + b, from trans (sub_add_inverse c b) (symm H),
   add_cancel_right H2
 
-theorem add_imp_sub_left {a b c : ℤ} (H : a + b = c) : b = c - a
+theorem add_imp_sub_left {a b c : ℤ} (H : a + b = c) : c - a = b
 := add_imp_sub_right (subst H (add_comm a b))
 
-theorem sub_imp_add {a b c : ℤ} (H : a - b = c) : a = c + b
+theorem sub_imp_add {a b c : ℤ} (H : a - b = c) : c + b = a
 := subst (add_imp_sub_right H) (neg_neg b)
 
-theorem sub_imp_sub {a b c : ℤ} (H : a - b = c) : b = a - c
-:= have H2 : a = c + b, from sub_imp_add H, add_imp_sub_left (symm H2)
+theorem sub_imp_sub {a b c : ℤ} (H : a - b = c) : a - c = b
+:= have H2 : c + b = a, from sub_imp_add H, add_imp_sub_left H2
 
 theorem sub_add_add_right (a b c : ℤ) : a + c - (b + c) = a - b
 :=
@@ -641,7 +624,7 @@ theorem sub_add_add_right (a b c : ℤ) : a + c - (b + c) = a - b
 theorem sub_add_add_left (a b c : ℤ) : c + a - (c + b) = a - b
 := subst (subst (sub_add_add_right a b c) (add_comm a c)) (add_comm b c)
 
-theorem dist_def (n m : ℕ) : dist n m = |(of_nat n - m)| --should this be nat::dist_def?
+theorem dist_def (n m : ℕ) : dist n m = |of_nat n - m|
 :=
   have H : of_nat n - m = psub (tpair n m), from
     calc
@@ -649,7 +632,7 @@ theorem dist_def (n m : ℕ) : dist n m = |(of_nat n - m)| --should this be nat:
         ... = psub (tpair n m) : by simp,
   calc
     dist n m = |psub (tpair n m)| : by simp
-      ... = |(of_nat n - m)| : {symm H}
+      ... = |of_nat n - m| : {symm H}
 
 -- ## mul
 
@@ -684,27 +667,27 @@ definition mul : ℤ → ℤ → ℤ := quotient_map_binary quotient
     (fun u v : ℕ ## ℕ, tpair (xx u * xx v + yy u * yy v) (xx u * yy v + yy u * xx v))
 infixl 70 *  : mul
 
-theorem mul_comp (u v : ℕ ## ℕ) : psub u * psub v =
-    psub (tpair (xx u * xx v + yy u * yy v) (xx u * yy v + yy u * xx v))
-:= comp_quotient_map_binary_refl rel_refl quotient @rel_mul u v
-
-theorem mul_comp2 (n m k l : ℕ)
+theorem mul_comp (n m k l : ℕ)
     : psub (tpair n m) * psub (tpair k l) = psub (tpair (n * k + m * l) (n * l + m * k))
-:= trans (mul_comp (tpair n m) (tpair k l)) (by simp)
+:=
+  have H : ∀u v,
+      psub u * psub v = psub (tpair (xx u * xx v + yy u * yy v) (xx u * yy v + yy u * xx v)),
+    from comp_quotient_map_binary_refl rel_refl quotient @rel_mul,
+  trans (H (tpair n m) (tpair k l)) (by simp)
 
-add_rewrite mul_comp2
+add_rewrite mul_comp
 
 theorem mul_comm (a b : ℤ) : a * b = b * a
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
-  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from int_destruct b,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
+  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from destruct b,
   by simp
 
 theorem mul_assoc (a b c : ℤ) : (a * b) * c = a * (b * c)
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
-  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from int_destruct b,
-  obtain (xc yc : ℕ) (Hc : c = psub (tpair xc yc)), from int_destruct c,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
+  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from destruct b,
+  obtain (xc yc : ℕ) (Hc : c = psub (tpair xc yc)), from destruct c,
   by simp
 
 theorem mul_left_comm : ∀a b c : ℤ, a * (b * c) = b * (a * c)
@@ -717,7 +700,7 @@ theorem mul_right_comm : ∀a b c : ℤ, a * b * c = a * c * b
 
 theorem mul_zero_right (a : ℤ) : a * 0 = 0
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
   have H0 : 0 = psub (tpair 0 0), from refl 0,
   by simp
 
@@ -726,7 +709,7 @@ theorem mul_zero_left (a : ℤ) : 0 * a = 0
 
 theorem mul_one_right (a : ℤ) : a * 1 = a
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
   have H1 : 1 = psub (tpair 1 0), from refl 1,
   by simp
 
@@ -735,8 +718,8 @@ theorem mul_one_left (a : ℤ) : 1 * a = a
 
 theorem mul_neg_right (a b : ℤ) : a * -b = -(a * b)
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
-  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from int_destruct b,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
+  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from destruct b,
   by simp
 
 theorem mul_neg_left (a b : ℤ) : -a * b = -(a * b)
@@ -749,9 +732,9 @@ theorem mul_neg_neg (a b : ℤ) : -a * -b = a * b
 
 theorem mul_distr_right (a b c : ℤ) : (a + b) * c = a * c + b * c
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
-  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from int_destruct b,
-  obtain (xc yc : ℕ) (Hc : c = psub (tpair xc yc)), from int_destruct c,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
+  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from destruct b,
+  obtain (xc yc : ℕ) (Hc : c = psub (tpair xc yc)), from destruct c,
   by simp
 
 theorem mul_distr_left (a b c : ℤ) : a * (b + c) = a * b + a * c
@@ -779,17 +762,17 @@ theorem mul_of_nat (n m : ℕ) : of_nat n * of_nat m = n * m
   have H : ∀n : ℕ, n = psub (tpair n 0), from take n : ℕ, refl n,
   by simp
 
-theorem mul_abs (a b : ℤ) : |(a * b)| = |a| * |b|
+theorem mul_abs (a b : ℤ) : |a * b| = |a| * |b|
 :=
-  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from int_destruct a,
-  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from int_destruct b,
+  obtain (xa ya : ℕ) (Ha : a = psub (tpair xa ya)), from destruct a,
+  obtain (xb yb : ℕ) (Hb : b = psub (tpair xb yb)), from destruct b,
   have H : dist xa ya * dist xb yb = dist (xa * xb + ya * yb) (xa * yb + ya * xb),
     from dist_mul_dist xa ya xb yb,
   by simp
 
 add_rewrite mul_zero_left mul_zero_right mul_one_right mul_one_left
 add_rewrite mul_comm mul_assoc mul_left_comm
-add_rewrite mul_distr_right mul_distr_left
+add_rewrite mul_distr_right mul_distr_left mul_of_nat
 --mul_sub_distr_left mul_sub_distr_right
 
 -- ---------- inversion
@@ -798,7 +781,7 @@ theorem mul_eq_zero {a b : ℤ} (H : a * b = 0) : a = 0 ∨ b = 0
 :=
   have H2 : |a| * |b| = 0, from
     calc
-      |a| * |b| = |(a * b)| : symm (mul_abs a b)
+      |a| * |b| = |a * b| : symm (mul_abs a b)
         ... = |0| : {H}
         ... = 0 : abs_of_nat 0,
   have H3 : |a| = 0 ∨ |b| = 0, from mul_eq_zero H2,
@@ -829,22 +812,15 @@ theorem mul_ne_zero {a b : ℤ} (Ha : a ≠ 0) (Hb : b ≠ 0) : a * b ≠ 0
         (assume H2 : a = 0, absurd H2 Ha)
         (assume H2 : b = 0, absurd H2 Hb))
 
-theorem mul_ne_zero_left {n m : ℤ} (H : n * m ≠ 0) : n ≠ 0
+theorem mul_ne_zero_left {a b : ℤ} (H : a * b ≠ 0) : a ≠ 0
 :=
   not_intro
-    (assume H2 : n = 0,
-      have H3 : n * m = 0, by simp,
+    (assume H2 : a = 0,
+      have H3 : a * b = 0, by simp,
       absurd H3 H)
 
-theorem mul_ne_zero_right {n m : ℤ} (H : n * m ≠ 0) : m ≠ 0
-:= mul_ne_zero_left (subst H (mul_comm n m))
-
--- theorem mul_eq_one_left {n m : ℤ} (H : n * m = 1) : n = 1 ∨ n = -1
--- :=
---   have |n|*|m|=|1| and use abs_cases
-
--- theorem mul_eq_one_right {n m : ℤ} (H : n * m = 1) : m = 1 ∨ m = -1
--- := mul_eq_one_left (subst H (mul_comm n m))
+theorem mul_ne_zero_right {a b : ℤ} (H : a * b ≠ 0) : b ≠ 0
+:= mul_ne_zero_left (subst H (mul_comm a b))
 
 -- ## le
 definition le (a b : ℤ) : Bool := ∃n : ℕ, a + n = b
@@ -852,7 +828,7 @@ infix  50 <= : le
 infix  50 ≤  : le
 
 -- definition le : ℤ → ℤ → Bool := rec_binary quotient (fun a b, xx a + yy b ≤ yy a + xx b)
--- theorem le_comp (u v : ℕ ## ℕ) : (psub u ≤ psub v) ↔ (xx u + yy v ≤ yy u + xx v)
+-- theorem le_comp_alt (u v : ℕ ## ℕ) : (psub u ≤ psub v) ↔ (xx u + yy v ≤ yy u + xx v)
 -- :=
 --   comp_binary_refl quotient rel_refl
 --   (take u u' v v' : ℕ ## ℕ,
@@ -885,17 +861,17 @@ theorem le_elim {a b : ℤ} (H : a ≤ b) : ∃n : ℕ, a + n = b
 theorem le_refl (a : ℤ) : a ≤ a
 := le_intro (add_zero_right a)
 
-theorem le_of_nat (n m : ℕ) : (n ≤ m) ↔ (of_nat n ≤ of_nat m)
+theorem le_of_nat (n m : ℕ) : (of_nat n ≤ of_nat m) ↔ (n ≤ m)
 :=
   iff_intro
-    (assume H : n ≤ m,
-      obtain (k : ℕ) (Hk : n + k = m), from nat::le_elim H,
-      have H2 : of_nat n + of_nat k = of_nat m, from subst (add_of_nat n k) Hk,
-      le_intro H2)
     (assume H : of_nat n ≤ of_nat m,
       obtain (k : ℕ) (Hk : of_nat n + of_nat k = of_nat m), from le_elim H,
       have H2 : n + k = m, from of_nat_inj (trans (symm (add_of_nat n k)) Hk),
       nat::le_intro H2)
+    (assume H : n ≤ m,
+      obtain (k : ℕ) (Hk : n + k = m), from nat::le_elim H,
+      have H2 : of_nat n + of_nat k = of_nat m, from subst (add_of_nat n k) Hk,
+      le_intro H2)
 
 theorem le_trans {a b c : ℤ} (H1 : a ≤ b) (H2 : b ≤ c) : a ≤ c
 :=
@@ -908,8 +884,6 @@ theorem le_trans {a b c : ℤ} (H1 : a ≤ b) (H2 : b ≤ c) : a ≤ c
         ... = b + m : {Hn}
         ... = c : Hm,
   le_intro H3
-
---set_option pp::coercion true
 
 theorem le_antisym {a b : ℤ} (H1 : a ≤ b) (H2 : b ≤ a) : a = b
 :=
@@ -954,18 +928,13 @@ theorem add_le_right {a b : ℤ} (H : a ≤ b) (c : ℤ) : a + c ≤ b + c
 theorem add_le {a b c d : ℤ} (H1 : a ≤ b) (H2 : c ≤ d) : a + c ≤ b + d
 := le_trans (add_le_right H1 c) (add_le_left H2 b)
 
-theorem add_le_cancel_left {a b c : ℤ} (H : c + a ≤ c + b) : a ≤ b
-:=
-  obtain (n : ℕ) (Hn : c + a + n = c + b), from le_elim H,
-  have H2 : c + (a + n) = c + b, from
-    calc
-      c + (a + n) = c + a + n : symm (add_assoc c a n)
-        ... = c + b : Hn,
-  have H3 : a + n = b, from add_cancel_left H2,
-  le_intro H3
-
 theorem add_le_cancel_right {a b c : ℤ} (H : a + c ≤ b + c) : a ≤ b
-:= add_le_cancel_left (subst (subst H (add_comm a c)) (add_comm b c))
+:=
+  have H2 : a + c - c ≤ b + c - c, from add_le_right H (-c),
+  subst (subst H2 (add_sub_inverse a c)) (add_sub_inverse b c)
+
+theorem add_le_cancel_left {a b c : ℤ} (H : c + a ≤ c + b) : a ≤ b
+:= add_le_cancel_right (subst (subst H (add_comm c a)) (add_comm c b))
 
 theorem add_le_inv {a b c d : ℤ} (H1 : a + b ≤ c + d) (H2 : c ≤ a) : b ≤ d
 :=
@@ -1002,13 +971,19 @@ theorem le_imp_succ_le_or_eq {a b : ℤ} (H : a ≤ b) : a + 1 ≤ b ∨ a = b
 theorem le_neg {a b : ℤ} (H : a ≤ b) : -b ≤ -a
 :=
   obtain (n : ℕ) (Hn : a + n = b), from le_elim H,
-  have H2 : b - n = a, from symm (add_imp_sub_right Hn),
+  have H2 : b - n = a, from add_imp_sub_right Hn,
   have H3 : -b + n = -a, from
     calc
       -b + n = -b + -(-n) : {symm (neg_neg n)}
         ... = -(b - n) : symm (neg_add_distr b (-n))
         ... = -a : {H2},
   le_intro H3
+
+theorem neg_le_zero {a : ℤ} (H : 0 ≤ a) : -a ≤ 0
+:= subst (le_neg H) neg_zero
+
+theorem zero_le_neg {a : ℤ} (H : a ≤ 0) : 0 ≤ -a
+:= subst (le_neg H) neg_zero
 
 theorem le_neg_inv {a b : ℤ} (H : -a ≤ -b) : b ≤ a
 := subst (subst (le_neg H) (neg_neg a)) (neg_neg b)
@@ -1047,6 +1022,14 @@ infix 50 >  : gt
 theorem lt_def (a b : ℤ) : a < b ↔ a + 1 ≤ b
 := refl (a < b)
 
+theorem gt_def (n m : ℕ) : n > m ↔ m < n
+:= refl (n > m)
+
+theorem ge_def (n m : ℕ) : n ≥ m ↔ m ≤ n
+:= refl (n ≥ m)
+
+add_rewrite gt_def ge_def --it might be possible to remove this in Lean 0.2
+
 theorem lt_add_succ (a : ℤ) (n : ℕ) : a < a + succ n
 := le_intro (show a + 1 + n = a + succ n, by simp)
 
@@ -1080,12 +1063,15 @@ theorem lt_irrefl (a : ℤ) : ¬ a < a
 theorem lt_imp_ne {a b : ℤ} (H : a < b) : a ≠ b
 := not_intro (assume H2 : a = b, absurd (subst H H2) (lt_irrefl b))
 
-theorem lt_of_nat (n m : ℕ) : (n < m) ↔ (of_nat n < of_nat m)
+theorem lt_of_nat (n m : ℕ) : (of_nat n < of_nat m) ↔ (n < m)
 :=
   calc
-    (n < m) = (succ n ≤ m) : nat::lt_def n m
-      ... = (of_nat (succ n) ≤ of_nat m) : le_of_nat (succ n) m
-      ... = (of_nat n + 1 ≤ of_nat m) : by simp
+    (of_nat n + 1 ≤ of_nat m) = (of_nat (succ n) ≤ of_nat m) : by simp
+      ... = (succ n ≤ m) : le_of_nat (succ n) m
+      ... = (n < m) : symm (nat::lt_def n m)
+
+theorem gt_of_nat (n m : ℕ) : (of_nat n > of_nat m) ↔ (n > m)
+:= lt_of_nat m n
 
 -- ### interaction with le
 
@@ -1169,6 +1155,12 @@ theorem lt_neg {a b : ℤ} (H : a < b) : -b < -a
   have H4 : -b + 1 ≤ -(a + 1) + 1, from add_le_right H3 1,
   subst H4 H2
 
+theorem neg_lt_zero {a : ℤ} (H : 0 < a) : -a < 0
+:= subst (lt_neg H) neg_zero
+
+theorem zero_lt_neg {a : ℤ} (H : a < 0) : 0 < -a
+:= subst (lt_neg H) neg_zero
+
 theorem lt_neg_inv {a b : ℤ} (H : -a < -b) : b < a
 := subst (subst (lt_neg H) (neg_neg a)) (neg_neg b)
 
@@ -1192,27 +1184,32 @@ theorem sub_lt_left_inv {a b c : ℤ} (H : c - a < c - b) : b < a
 
 -- ### totality of lt and le
 
+add_rewrite succ_pos zero_le --move some of these to nat.lean
+add_rewrite le_of_nat lt_of_nat gt_of_nat --remove gt_of_nat in Lean 0.2
+add_rewrite le_neg lt_neg neg_le_zero zero_le_neg zero_lt_neg neg_lt_zero
+
+axiom sorry {P : Bool} : P
+
 theorem neg_le_pos (n m : ℕ) : -n ≤ m
 :=
-  have H1 : of_nat 0 ≤ of_nat m, from le_of_nat 0 m ◂ zero_le m,
-  have H2 : -n ≤ - 0, from le_neg (le_of_nat 0 n ◂ zero_le n),
-  le_trans (subst H2 neg_zero) H1
+  have H1 : of_nat 0 ≤ of_nat m, by simp,
+  have H2 : -n ≤ 0, by simp,
+  le_trans H2 H1
 
 theorem le_or_gt (a b : ℤ) : a ≤ b ∨ a > b
 :=
-  by_cases a
+  int_by_cases a
     (take n : ℕ,
-      by_cases_succ b
+      int_by_cases_succ b
         (take m : ℕ,
-          show of_nat n ≤ m ∨ of_nat n > m, from
-            subst (subst (le_or_gt n m) (le_of_nat n m)) (lt_of_nat m n))
+          show of_nat n ≤ m ∨ of_nat n > m, from (by simp) ◂ (le_or_gt n m))
         (take m : ℕ,
           show n ≤ -succ m ∨ n > -succ m, from
             have H0 : -succ m < -m, from lt_neg (subst (self_lt_succ m) (symm (of_nat_succ m))),
             have H : -succ m < n, from lt_le_trans H0 (neg_le_pos m n),
             or_intro_right _ H))
     (take n : ℕ,
-      by_cases_succ b
+      int_by_cases_succ b
         (take m : ℕ,
           show -n ≤ m ∨ -n > m, from
             or_intro_left _ (neg_le_pos n m))
@@ -1220,14 +1217,14 @@ theorem le_or_gt (a b : ℤ) : a ≤ b ∨ a > b
           show -n ≤ -succ m ∨ -n > -succ m, from
             or_imp_or (le_or_gt (succ m) n)
               (assume H : succ m ≤ n,
-                le_neg (le_of_nat (succ m) n ◂ H))
+                le_neg (symm (le_of_nat (succ m) n) ◂ H))
               (assume H : succ m > n,
-                lt_neg (lt_of_nat n (succ m) ◂ H))))
+                lt_neg (symm (lt_of_nat n (succ m)) ◂ H))))
 
-theorem trichotomy_alt (a b : ℤ) : (a < b ∨ a = b) ∨ b < a
+theorem trichotomy_alt (a b : ℤ) : (a < b ∨ a = b) ∨ a > b
 := or_imp_or_left (le_or_gt a b) (assume H : a ≤ b, le_imp_lt_or_eq H)
 
-theorem trichotomy (a b : ℤ) : a < b ∨ a = b ∨ b < a
+theorem trichotomy (a b : ℤ) : a < b ∨ a = b ∨ a > b
 := iff_elim_left (or_assoc _ _ _) (trichotomy_alt a b)
 
 theorem le_total (a b : ℤ) : a ≤ b ∨ b ≤ a
@@ -1239,109 +1236,272 @@ theorem not_lt_imp_le {a b : ℤ} (H : ¬ a < b) : b ≤ a
 theorem not_le_imp_lt {a b : ℤ} (H : ¬ a ≤ b) : b < a
 := resolve_right (le_or_gt a b) H
 
--- -- Note: interaction with multiplication under "positivity"
+-- (non)positivity and (non)negativity
+-- -------------------------------------
 
--- -- ### misc
+-- ### basic
 
--- theorem strong_induction_on {P : nat → Bool} (n : ℤ) (H : ∀n, (∀m, m < n → P m) → P n) : P n
--- :=
---   have H1 : ∀n, ∀m, m < n → P m, from
---     take n,
---     induction_on n
---       (show ∀m, m < 0 → P m, from take m H, absurd_elim _ H (not_lt_zero _))
---       (take n',
---         assume IH : ∀m, m < n' → P m,
---         have H2: P n', from H n' IH,
---         show ∀m, m < succ n' → P m, from
---           take m,
---           assume H3 : m < succ n',
---           or_elim (le_imp_lt_or_eq (lt_succ_imp_le H3))
---             (assume H4: m < n', IH _ H4)
---             (assume H4: m = n', subst H2 (symm H4))),
---   H1 _ _ (self_lt_succ n)
+-- see also "int_by_cases" and similar theorems
 
--- theorem case_strong_induction_on {P : nat → Bool} (a : nat) (H0 : P 0)
---     (Hind : ∀(n : nat), (∀m, m ≤ n → P m) → P (succ n)) : P a
--- :=
---   strong_induction_on a (
---     take n,
---     show (∀m, m < n → P m) → P n, from
---       case n
---          (assume H : (∀m, m < 0 → P m), show P 0, from H0)
---          (take n,
---            assume H : (∀m, m < succ n → P m),
---            show P (succ n), from
---              Hind n (take m, assume H1 : m ≤ n, H _ (le_imp_lt_succ H1))))
+theorem pos_imp_exists_nat {a : ℤ} (H : a ≥ 0) : ∃n : ℕ, a = n
+:=
+  obtain (n : ℕ) (Hn : of_nat 0 + n = a), from le_elim H,
+  exists_intro n (trans (symm Hn) (add_zero_left n))
 
--- theorem add_eq_self {a b : ℤ} (H : n + m = n) : m = 0
--- :=
---   discriminate
---     (assume Hm : m = 0, Hm)
---     (take k : nat,
---       assume Hm : m = succ k,
---       have H2 : succ n + k = n,
---         from calc
---           succ n + k = n + succ k : add_move_succ n k
---             ... = n + m : {symm Hm}
---             ... = n : H,
---       have H3 : n < n, from lt_intro H2,
---       have H4 : n ≠ n, from lt_imp_ne H3,
---       absurd_elim _ (refl n) H4)
+theorem neg_imp_exists_nat {a : ℤ} (H : a ≤ 0) : ∃n : ℕ, a = -n
+:=
+  have H2 : -a ≥ 0, from zero_le_neg H,
+  obtain (n : ℕ) (Hn : -a = n), from pos_imp_exists_nat H2,
+  have H3 : a = -n, from symm (neg_move Hn),
+  exists_intro n H3
 
--- -- Greater than, greater than or equal
--- -- -----------------------------------
+theorem abs_pos {a : ℤ} (H : a ≥ 0) : |a| = a
+:=
+  obtain (n : ℕ) (Hn : a = n), from pos_imp_exists_nat H,
+  subst (congr2 of_nat (abs_of_nat n)) (symm Hn)
 
--- definition ge (a b : ℤ) := m ≤ n
--- infix 50 >= : ge
--- infix 50 ≥  : ge
+--abs_neg is already taken... rename?
+theorem abs_negative {a : ℤ} (H : a ≤ 0) : |a| = -a
+:=
+  obtain (n : ℕ) (Hn : a = -n), from neg_imp_exists_nat H,
+  calc
+    |a| = | -n| : {Hn}
+    ... = |n| : {abs_neg n}
+    ... = n : {abs_of_nat n}
+    ... = -a : symm (neg_move (symm Hn))
 
--- definition gt (a b : ℤ) := m < n
--- infix 50 >  : gt
+theorem abs_cases (a : ℤ) : a = |a| ∨ a = - |a|
+:=
+  or_imp_or (le_total 0 a)
+    (assume H : a ≥ 0, symm (abs_pos H))
+    (assume H : a ≤ 0, symm (neg_move (symm (abs_negative H))))
 
--- --- prove some theorems, like ge_imp_le le_imp_ge lt_imp_gt gt_imp_lt?
+-- ### interaction of mul with le and lt
 
--- -- Positivity
--- -- ---------
--- --
--- -- Writing "t > 0" is the preferred way to assert that a natural number is positive.
+theorem mul_le_left_nonneg {a b c : ℤ} (Ha : a ≥ 0) (H : b ≤ c) : a * b ≤ a * c
+:=
+  obtain (n : ℕ) (Hn : b + n = c), from le_elim H,
+  have H2 : a * b + |a| * n = a * c, from
+    calc
+      a * b + |a| * n = a * b + |a| * of_nat n : by simp
+        ... = a * b + a * n : {abs_pos Ha}
+        ... = a * (b + n) : by simp_no_assump
+        ... = a * c : by simp,
+  le_intro H2
 
--- -- ### basic
+theorem mul_le_right_nonneg {a b c : ℤ} (Hb : b ≥ 0) (H : a ≤ c) : a * b ≤ c * b
+:= subst (subst (mul_le_left_nonneg Hb H) (mul_comm b a)) (mul_comm b c)
 
--- -- See also succ_pos.
+theorem mul_le_left_nonpos {a b c : ℤ} (Ha : a ≤ 0) (H : b ≤ c) : a * c ≤ a * b
+:=
+  have H2 : -a * b ≤ -a * c, from mul_le_left_nonneg (zero_le_neg Ha) H,
+  have H3 : -(a * b) ≤ -(a * c), from subst (subst H2 (mul_neg_left a b)) (mul_neg_left a c),
+  le_neg_inv H3
 
--- theorem case_zero_pos {P : ℤ → Bool} (y : ℤ) (H0 : P 0) (H1 : ∀y, y > 0 → P y) : P y
--- := case y H0 (take y', H1 _ (succ_pos _))
+theorem mul_le_right_nonpos {a b c : ℤ} (Hb : b ≤ 0) (H : c ≤ a) : a * b ≤ c * b
+:= subst (subst (mul_le_left_nonpos Hb H) (mul_comm b a)) (mul_comm b c)
 
--- theorem zero_or_pos (n : ℤ) : n = 0 ∨ n > 0
--- := or_imp_or (or_flip (le_imp_lt_or_eq (zero_le n))) (take H : 0 = n, symm H) (take H : n > 0, H)
+---this theorem can be made more general by replacing either Ha with 0 ≤ a or Hb with 0 ≤ d...
+theorem mul_le_nonneg {a b c d : ℤ} (Ha : a ≥ 0) (Hb : b ≥ 0) (Hc : a ≤ c) (Hd : b ≤ d)
+    : a * b ≤ c * d
+:= le_trans (mul_le_right_nonneg Hb Hc) (mul_le_left_nonneg (le_trans Ha Hc) Hd)
 
--- theorem succ_imp_pos {a b : ℤ} (H : n = succ m) : n > 0
--- := subst (succ_pos m) (symm H)
+theorem mul_le_nonpos {a b c d : ℤ} (Ha : a ≤ 0) (Hb : b ≤ 0) (Hc : c ≤ a) (Hd : d ≤ b)
+    : a * b ≤ c * d
+:= le_trans (mul_le_right_nonpos Hb Hc) (mul_le_left_nonpos (le_trans Hc Ha) Hd)
 
--- theorem ne_zero_pos {n : ℤ} (H : n ≠ 0) : n > 0
--- := or_elim (zero_or_pos n) (take H2 : n = 0, absurd_elim _ H2 H) (take H2 : n > 0, H2)
+theorem mul_lt_left_pos {a b c : ℤ} (Ha : a > 0) (H : b < c) : a * b < a * c
+:=
+  have H2 : a * b < a * b + a, from subst (add_lt_left Ha (a * b)) (add_zero_right (a * b)),
+  have H3 : a * b + a ≤ a * c, from subst (mul_le_left_nonneg (lt_imp_le Ha) H) (by simp),
+  lt_le_trans H2 H3
 
--- theorem pos_imp_eq_succ {n : ℤ} (H : n > 0) : exists l, n = succ l
--- := lt_imp_eq_succ H
+theorem mul_lt_right_pos {a b c : ℤ} (Hb : b > 0) (H : a < c) : a * b < c * b
+:= subst (subst (mul_lt_left_pos Hb H) (mul_comm b a)) (mul_comm b c)
 
--- theorem add_pos_right (n : ℤ) {k : ℤ} (H : k > 0) : n + k > n
--- :=
---   obtain (l : ℤ) (Hl : k = succ l), from pos_imp_eq_succ H,
---   subst (lt_add_succ n l) (symm Hl)
+theorem mul_lt_left_neg {a b c : ℤ} (Ha : a < 0) (H : b < c) : a * c < a * b
+:=
+  have H2 : -a * b < -a * c, from mul_lt_left_pos (zero_lt_neg Ha) H,
+  have H3 : -(a * b) < -(a * c), from subst (subst H2 (mul_neg_left a b)) (mul_neg_left a c),
+  lt_neg_inv H3
 
--- theorem add_pos_left (n : ℤ) {k : ℤ} (H : k > 0) : k + n > n
--- := subst (add_pos_right n H) (add_comm n k)
+theorem mul_lt_right_neg {a b c : ℤ} (Hb : b < 0) (H : c < a) : a * b < c * b
+:= subst (subst (mul_lt_left_neg Hb H) (mul_comm b a)) (mul_comm b c)
 
+theorem mul_le_lt_pos {a b c d : ℤ} (Ha : a > 0) (Hb : b ≥ 0) (Hc : a ≤ c) (Hd : b < d)
+    : a * b < c * d
+:= le_lt_trans (mul_le_right_nonneg Hb Hc) (mul_lt_left_pos (lt_le_trans Ha Hc) Hd)
 
--- interaction of mul with le/lt
+theorem mul_lt_le_pos {a b c d : ℤ} (Ha : a ≥ 0) (Hb : b > 0) (Hc : a < c) (Hd : b ≤ d)
+    : a * b < c * d
+:= lt_le_trans (mul_lt_right_pos Hb Hc) (mul_le_left_nonneg (le_trans Ha (lt_imp_le Hc)) Hd)
 
+theorem mul_lt_pos {a b c d : ℤ} (Ha : a > 0) (Hb : b > 0) (Hc : a < c) (Hd : b < d)
+    : a * b < c * d
+:= mul_lt_le_pos (lt_imp_le Ha) Hb Hc (lt_imp_le Hd)
 
+theorem mul_lt_neg {a b c d : ℤ} (Ha : a < 0) (Hb : b < 0) (Hc : c < a) (Hd : d < b)
+    : a * b < c * d
+:= lt_trans (mul_lt_right_neg Hb Hc) (mul_lt_left_neg (lt_trans Hc Ha) Hd)
+
+-- theorem mul_le_lt_neg and mul_lt_le_neg?
+
+theorem mul_lt_cancel_left_nonneg {a b c : ℤ} (Hc : c ≥ 0) (H : c * a < c * b) : a < b
+:=
+  or_elim (le_or_gt b a)
+    (assume H2 : b ≤ a,
+      have H3 : c * b ≤ c * a, from mul_le_left_nonneg Hc H2,
+      absurd_elim _ H3 (lt_imp_not_ge H))
+    (assume H2 : a < b, H2)
+
+theorem mul_lt_cancel_right_nonneg {a b c : ℤ} (Hc : c ≥ 0) (H : a * c < b * c) : a < b
+:= mul_lt_cancel_left_nonneg Hc (subst (subst H (mul_comm a c)) (mul_comm b c))
+
+theorem mul_lt_cancel_left_nonpos {a b c : ℤ} (Hc : c ≤ 0) (H : c * b < c * a) : a < b
+:=
+  have H2 : -(c * a) < -(c * b), from lt_neg H,
+  have H3 : -c * a < -c * b,
+    from subst (subst H2 (symm (mul_neg_left c a))) (symm (mul_neg_left c b)),
+  have H4 : -c ≥ 0, from zero_le_neg Hc,
+  mul_lt_cancel_left_nonneg H4 H3
+
+theorem mul_lt_cancel_right_nonpos {a b c : ℤ} (Hc : c ≤ 0) (H : b * c < a * c) : a < b
+:= mul_lt_cancel_left_nonpos Hc (subst (subst H (mul_comm a c)) (mul_comm b c))
+
+theorem mul_le_cancel_left_pos {a b c : ℤ} (Hc : c > 0) (H : c * a ≤ c * b) : a ≤ b
+:=
+  or_elim (le_or_gt a b)
+    (assume H2 : a ≤ b, H2)
+    (assume H2 : a > b,
+      have H3 : c * a > c * b, from mul_lt_left_pos Hc H2,
+      absurd_elim _ H3 (le_imp_not_gt H))
+
+theorem mul_le_cancel_right_pos {a b c : ℤ} (Hc : c > 0) (H : a * c ≤ b * c) : a ≤ b
+:= mul_le_cancel_left_pos Hc (subst (subst H (mul_comm a c)) (mul_comm b c))
+
+theorem mul_le_cancel_left_neg {a b c : ℤ} (Hc : c < 0) (H : c * b ≤ c * a) : a ≤ b
+:=
+  have H2 : -(c * a) ≤ -(c * b), from le_neg H,
+  have H3 : -c * a ≤ -c * b,
+    from subst (subst H2 (symm (mul_neg_left c a))) (symm (mul_neg_left c b)),
+  have H4 : -c > 0, from zero_lt_neg Hc,
+  mul_le_cancel_left_pos H4 H3
+
+theorem mul_le_cancel_right_neg {a b c : ℤ} (Hc : c < 0) (H : b * c ≤ a * c) : a ≤ b
+:= mul_le_cancel_left_neg Hc (subst (subst H (mul_comm a c)) (mul_comm b c))
+
+theorem mul_eq_one_left {a b : ℤ} (H : a * b = 1) : a = 1 ∨ a = - 1
+:=
+  have H2 : |a| * |b| = 1, from
+    calc
+      |a| * |b| = |a * b| : symm (mul_abs a b)
+        ... = |1| : {H}
+        ... = 1 : abs_of_nat 1,
+  have H3 : |a| = 1, from mul_eq_one_left H2,
+  or_imp_or (abs_cases a)
+    (assume H4 : a = |a|, subst H4 H3)
+    (assume H4 : a = - |a|, subst H4 H3)
+
+theorem mul_eq_one_right {a b : ℤ} (H : a * b = 1) : b = 1 ∨ b = - 1
+:= mul_eq_one_left (subst H (mul_comm a b))
+
+-- sign function
+-- -------------
+
+definition sign (a : ℤ) : ℤ := if a > 0 then 1 else (if a < 0 then - 1 else 0)
+
+--for kernel
+theorem or_elim3 {a b c d : Bool} (H : a ∨ b ∨ c) (Ha : a → d) (Hb : b → d) (Hc : c → d) : d
+:= or_elim H Ha (assume H2,or_elim H2 Hb Hc)
+
+theorem sign_pos {a : ℤ} (H : a > 0) : sign a = 1
+:= imp_if_eq H _ _
+
+theorem sign_negative {a : ℤ} (H : a < 0) : sign a = - 1
+:= trans (not_imp_if_eq (lt_antisym H) _ _) (imp_if_eq H  _ _)
+
+theorem sign_zero : sign 0 = 0
+:= trans (not_imp_if_eq (lt_irrefl 0) _ _) (not_imp_if_eq (lt_irrefl 0)  _ _)
+
+add_rewrite sign_negative sign_pos abs_negative abs_pos sign_zero mul_abs
+
+theorem mul_sign_abs (a : ℤ) : sign a * |a| = a
+:=
+  have temp1 : ∀a : ℤ, a < 0 → a ≤ 0, from take a, lt_imp_le,
+  have temp2 : ∀a : ℤ, a > 0 → a ≥ 0, from take a, lt_imp_le,
+  or_elim3 (trichotomy a 0)
+    (assume H : a < 0, by simp)
+    (assume H : a = 0, by simp)
+    (assume H : a > 0, by simp)
+
+theorem sign_mul (a b : ℤ) : sign (a * b) = sign a * sign b
+:=
+  by_cases
+    (assume Ha : a = 0, by simp)
+    (assume Ha : a ≠ 0,
+      by_cases
+        (assume Hb : b = 0, by simp)
+        (assume Hb : b ≠ 0,
+          have H : sign (a * b) * |a * b| = sign a * sign b  * |a * b|, from
+            calc
+              sign (a * b) * |a * b| = a * b : mul_sign_abs (a * b)
+                ... = sign a * |a| * b : {symm (mul_sign_abs a)}
+                ... = sign a * |a| * (sign b * |b|) : {symm (mul_sign_abs b)}
+                ... = sign a * sign b  * |a * b| : by simp,
+          have H2 : |a * b| ≠ 0, from contrapos (@abs_eq_zero (a * b)) (mul_ne_zero Ha Hb),
+          have H3 : |a * b| ≠ of_nat 0, from contrapos of_nat_inj H2,
+          mul_cancel_right H3 H))
+
+--set_option pp::coercion true
+
+theorem sign_idempotent (a : ℤ) : sign (sign a) = sign a
+:=
+  have temp : of_nat 1 > 0, from symm (lt_of_nat 0 1) ◂ (succ_pos 0),--this should be done with simp
+  or_elim3 (trichotomy a 0)
+    (by simp)
+    (by simp)
+    (by simp)
+
+theorem sign_succ (n : ℕ) : sign (succ n) = 1
+:= sign_pos (symm (lt_of_nat 0 (succ n)) ◂ succ_pos n) --this should be done with simp
+
+theorem sign_neg (a : ℤ) : sign (-a) = - sign a
+:=
+  have temp1 : a > 0 → -a < 0, from neg_lt_zero,
+  have temp2 : a < 0 → -a > 0, from zero_lt_neg,
+  or_elim3 (trichotomy a 0)
+    (by simp)
+    (by simp)
+    (by simp)
+
+add_rewrite sign_neg
+
+theorem abs_sign_ne_zero {a : ℤ} (H : a ≠ 0) : |sign a| = 1
+:=
+  or_elim3 (trichotomy a 0)
+    (by simp)
+    (assume H2 : a = 0, absurd_elim _ H2 H)
+    (by simp)
+
+theorem sign_abs (a : ℤ) : sign (abs a) = abs (sign a)
+:=
+  have temp1 : ∀a : ℤ, a < 0 → a ≤ 0, from take a, lt_imp_le,
+  have temp2 : ∀a : ℤ, a > 0 → a ≥ 0, from take a, lt_imp_le,
+  or_elim3 (trichotomy a 0)
+    (by simp)
+    (by simp)
+    (by simp)
+
+set_opaque rel true
+set_opaque rep true
+set_opaque of_nat true
+set_opaque abs true
 set_opaque neg true
 set_opaque add true
 set_opaque mul true
 set_opaque le true
 set_opaque lt true
-set_opaque rep true
---transparent: sub
+set_opaque sign true
+--transparent: sub ge gt
 
 end -- namespace int

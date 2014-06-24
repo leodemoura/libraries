@@ -657,17 +657,11 @@ theorem pred_le_imp_le_or_eq {n m : ℕ} (H : pred n ≤ m) : n ≤ m ∨ n = su
 theorem mul_le_left {n m : ℕ} (H : n ≤ m) (k : ℕ) : k * n ≤ k * m
 :=
   obtain (l : ℕ) (Hl : n + l = m), from (le_elim H),
-  induction_on k
-    (have H2 : 0 * n = 0 * m,
-      from calc
-        0 * n = 0 : mul_zero_left n
-          ... = 0 * m : symm (mul_zero_left m),
-      show 0 * n ≤ 0 * m, from subst (le_refl (0 * n)) H2)
-    (take (l : ℕ),
-      assume IH : l * n ≤ l * m,
-      have H2 : l * n + n ≤ l * m + m, from add_le IH H,
-      have H3 : succ l * n ≤ l * m + m, from subst H2 (symm (mul_succ_left l n)),
-      show succ l * n ≤ succ l * m, from subst H3 (symm (mul_succ_left l m)))
+  have H2 : k * n + k * l = k * m, from
+    calc
+      k * n + k * l = k * (n + l) : by simp_no_assump
+        ... = k * m : {Hl},
+  le_intro H2
 
 theorem mul_le_right {n m : ℕ} (H : n ≤ m) (k : ℕ) : n * k ≤ m * k
 := subst (subst (mul_le_left H k) (mul_comm k n)) (mul_comm k m)
@@ -694,6 +688,14 @@ infix 50 >  : gt
 
 theorem lt_def (n m : ℕ) : n < m ↔ succ n ≤ m
 := refl (n < m)
+
+theorem gt_def (n m : ℕ) : n > m ↔ m < n
+:= refl (n > m)
+
+theorem ge_def (n m : ℕ) : n ≥ m ↔ m ≤ n
+:= refl (n ≥ m)
+
+add_rewrite gt_def ge_def --it might be possible to remove this in Lean 0.2
 
 theorem lt_intro {n m k : ℕ} (H : succ n + k = m) : n < m
 := le_intro H
@@ -883,8 +885,6 @@ theorem case_strong_induction_on {P : nat → Bool} (a : nat) (H0 : P 0)
            show P (succ n), from
              Hind n (take m, assume H1 : m ≤ n, H _ (le_imp_lt_succ H1))))
 
---- prove some theorems, like ge_imp_le le_imp_ge lt_imp_gt gt_imp_lt?
-
 -- Positivity
 -- ---------
 --
@@ -910,9 +910,7 @@ theorem pos_imp_eq_succ {n : ℕ} (H : n > 0) : exists l, n = succ l
 := lt_imp_eq_succ H
 
 theorem add_pos_right (n : ℕ) {k : ℕ} (H : k > 0) : n + k > n
-:=
-  obtain (l : ℕ) (Hl : k = succ l), from pos_imp_eq_succ H,
-  subst (lt_add_succ n l) (symm Hl)
+:= subst (add_lt_left H n) (add_zero_right n)
 
 theorem add_pos_left (n : ℕ) {k : ℕ} (H : k > 0) : k + n > n
 := subst (add_pos_right n H) (add_comm n k)
@@ -973,27 +971,34 @@ theorem mul_lt {n m k l : ℕ} (H1 : n < k) (H2 : m < l) : n * m < k * l
 
 theorem mul_lt_cancel_left {n m k : ℕ} (H : k * n < k * m) : n < m
 :=
-  have general : ∀ m, k * n < k * m → n < m, from
-    induction_on n
-      (take m : nat,
-        assume H2 : k * 0 < k * m,
-        have H3 : 0 < k * m, from subst H2 (mul_zero_right k),
-        show 0 < m, from mul_pos_imp_pos_right H3)
-      (take l : nat,
-        assume IH : ∀ m, k * l < k * m → l < m,
-        take m : nat,
-        assume H2 : k * succ l < k * m,
-        have H3 : 0 < k * m, from le_lt_trans (zero_le _) H2,
-        have H4 : 0 < m, from mul_pos_imp_pos_right H3,
-        obtain (l2 : ℕ) (Hl2 : m = succ l2), from pos_imp_eq_succ H4,
-        have H5 : k * l + k < k * m, from subst H2 (mul_succ_right k l),
-        have H6 : k * l + k < k * succ l2, from subst H5 Hl2,
-        have H7 : k * l + k < k * l2 + k, from subst H6 (mul_succ_right k l2),
-        have H8 : k * l < k * l2, from add_lt_cancel_right H7,
-        have H9 : l < l2, from IH l2 H8,
-        have H10 : succ l < succ l2, from succ_lt H9,
-        show succ l < m, from subst H10 (symm Hl2)),
-  general m H
+  or_elim (le_or_gt m n)
+    (assume H2 : m ≤ n,
+      have H3 : k * m ≤ k * n, from mul_le_left H2 k,
+      absurd_elim _ H3 (lt_imp_not_ge H))
+    (assume H2 : n < m, H2)
+
+  -- previous, longer proof:
+  -- have general : ∀ m, k * n < k * m → n < m, from
+  --   induction_on n
+  --     (take m : nat,
+  --       assume H2 : k * 0 < k * m,
+  --       have H3 : 0 < k * m, from subst H2 (mul_zero_right k),
+  --       show 0 < m, from mul_pos_imp_pos_right H3)
+  --     (take l : nat,
+  --       assume IH : ∀ m, k * l < k * m → l < m,
+  --       take m : nat,
+  --       assume H2 : k * succ l < k * m,
+  --       have H3 : 0 < k * m, from le_lt_trans (zero_le _) H2,
+  --       have H4 : 0 < m, from mul_pos_imp_pos_right H3,
+  --       obtain (l2 : ℕ) (Hl2 : m = succ l2), from pos_imp_eq_succ H4,
+  --       have H5 : k * l + k < k * m, from subst H2 (mul_succ_right k l),
+  --       have H6 : k * l + k < k * succ l2, from subst H5 Hl2,
+  --       have H7 : k * l + k < k * l2 + k, from subst H6 (mul_succ_right k l2),
+  --       have H8 : k * l < k * l2, from add_lt_cancel_right H7,
+  --       have H9 : l < l2, from IH l2 H8,
+  --       have H10 : succ l < succ l2, from succ_lt H9,
+  --       show succ l < m, from subst H10 (symm Hl2)),
+  -- general m H
 
 theorem mul_lt_cancel_right {n m k : ℕ} (H : n * k < m * k) : n < m
 := mul_lt_cancel_left (subst (subst H (mul_comm n k)) (mul_comm m k))
@@ -1506,7 +1511,7 @@ theorem dist_add_right (n k m : ℕ) : dist (n + k) (m + k) = dist n m
 theorem dist_add_left (k n m : ℕ) : dist (k + n) (k + m) = dist n m
 := subst (subst (dist_add_right n k m) (add_comm n k)) (add_comm m k)
 
-add_rewrite dist_self dist_add_right dist_add_left
+add_rewrite dist_self dist_add_right dist_add_left dist_zero_left dist_zero_right
 
 theorem dist_ge_add_right {n m : ℕ} (H : n ≥ m) : dist n m + m = n
 :=

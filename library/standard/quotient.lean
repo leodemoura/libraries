@@ -6,7 +6,6 @@
 
 import macros tactic subtype
 
-
 -- for kernel?
 
 theorem eq_hcongr2 {A B : (Type U)} {a b : A} (f : A → B) (H : a = b) : f a == f b
@@ -570,13 +569,13 @@ theorem prelim_map_rel {A : Type} {R : A → A → Bool} (H : equivalence R) (a 
 theorem prelim_map_congr {A : Type} {R : A → A → Bool} (H1 : equivalence R) {a b : A}
     (H2 : R a b) : prelim_map R a = prelim_map R b
 :=
-  have symm : symmetric R, from and_elim_left (and_elim_right H1),
-  have trans : transitive R, from and_elim_right (and_elim_right H1),
+  have symmR : symmetric R, from and_elim_left (and_elim_right H1),
+  have transR : transitive R, from and_elim_right (and_elim_right H1),
   have H3 : ∀c, R a c ↔ R b c, from
     take c,
       iff_intro
-        (assume H4 : R a c, trans b a c (symm a b H2) H4)
-        (assume H4 : R b c, trans a b c H2 H4),
+        (assume H4 : R a c, transR b a c (symmR a b H2) H4)
+        (assume H4 : R b c, transR a b c H2 H4),
   have H4 : (fun c, R a c) = (fun c, R b c), from funext H3,
   congr (congr2 ε (proof_irrel (inhabited_intro a) (inhabited_intro b))) H4
 
